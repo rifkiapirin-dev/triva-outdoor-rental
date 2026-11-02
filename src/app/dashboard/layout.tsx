@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
 import ModalNewRental from "@/components/ModalNewRental";
+import ModalEditImage from "@/components/ModalEditImage";
 import FloatingCartBar from "@/components/cart/FloatingCartBar";
 import CartDrawer from "@/components/cart/CartDrawer";
 
@@ -35,6 +36,7 @@ export default function DashboardLayout({
 
       {/* 5. Global Modals */}
       <ModalNewRental />
+      <ModalEditImage />
     </div>
   );
 }

@@ -40,7 +40,9 @@ button, input, select, textarea {
 
 /* POS Receipt Printing Styles */
 @media print {
-  body {
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
     background: #ffffff !important;
     color: #000000 !important;
   }
@@ -56,8 +58,10 @@ button, input, select, textarea {
     left: 0;
     top: 0;
     width: 100%;
+    max-height: none !important;
+    overflow: visible !important;
     margin: 0;
-    padding: 24px;
+    padding: 16px;
     background: #ffffff !important;
     color: #000000 !important;
     box-shadow: none !important;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { User, UserRole, GearItem, GearCategory, RentalTransaction, StoreSettings, CartItem } from "@/types";
 import { createClient } from "@/lib/supabase/client";
 
@@ -136,6 +136,9 @@ interface AppContextType {
   isCartDrawerOpen: boolean;
   setIsCartDrawerOpen: (val: boolean) => void;
   preselectedDates: { startDate: string; endDate: string } | null;
+  setPreselectedDates: (dates: { startDate: string; endDate: string } | null) => void;
+  setPreselectedItem: (item: GearItem | null) => void;
+  clearPreselected: () => void;
   checkoutFromCart: (dates?: { startDate: string; endDate: string }) => void;
 }
 
@@ -847,6 +850,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isRentalsLoaded, setIsRentalsLoaded] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
+  const recentlyCreatedBookingCodes = useRef<Set<string>>(new Set());
+
+  const clearPreselected = () => {
+    setPreselectedItem(null);
+    setPreselectedDates(null);
+  };
 
   // Load custom state (transaksi sewa, items, categories) dari localStorage & server file
   useEffect(() => {
@@ -990,8 +999,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
           (payload) => {
             if (payload.eventType === "INSERT") {
               const newR = mapRentalFromDb(payload.new);
-              setRentals((prev) => [newR, ...prev.filter((r) => r.id !== newR.id)]);
-              notify(`🔔 [Realtime] Pesanan baru ${newR.bookingCode} (${newR.customerName}) masuk!`, "info");
+              setRentals((prev) => [
+                newR,
+                ...prev.filter(
+                  (r) => r.id !== newR.id && r.bookingCode !== newR.bookingCode
+                ),
+              ]);
+              if (!recentlyCreatedBookingCodes.current.has(newR.bookingCode)) {
+                notify(`🔔 [Realtime] Pesanan baru ${newR.bookingCode} (${newR.customerName}) masuk!`, "info");
+              }
             } else if (payload.eventType === "UPDATE") {
               const updatedR = mapRentalFromDb(payload.new);
               setRentals((prev) => prev.map((r) => (r.id === updatedR.id ? updatedR : r)));
@@ -1356,7 +1372,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       createdAt: new Date().toISOString(),
     };
 
-    setRentals((prev) => [newRental, ...prev]);
+    setRentals((prev) => [
+      newRental,
+      ...prev.filter((r) => r.id !== newRental.id && r.bookingCode !== newRental.bookingCode),
+    ]);
+
+    recentlyCreatedBookingCodes.current.add(newRental.bookingCode);
+    setTimeout(() => {
+      recentlyCreatedBookingCodes.current.delete(newRental.bookingCode);
+    }, 15000);
 
     // Update status items to rented if active
     if (newRental.status === "active") {
@@ -1650,6 +1674,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isCartDrawerOpen,
         setIsCartDrawerOpen,
         preselectedDates,
+        setPreselectedDates,
+        setPreselectedItem,
+        clearPreselected,
         checkoutFromCart,
       }}
     >

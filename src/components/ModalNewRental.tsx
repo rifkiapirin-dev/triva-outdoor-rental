@@ -37,9 +37,11 @@ export default function ModalNewRental() {
     currentUser,
     settings,
     preselectedItem,
+    preselectedDates,
     notify,
     cart,
     clearCart,
+    clearPreselected,
   } = useApp();
 
   // 1. ALL REACT HOOKS CALLED UNCONDITIONALLY AT TOP LEVEL
@@ -104,9 +106,13 @@ export default function ModalNewRental() {
     }
   }, [currentUser]);
 
-  // Pre-load items when opened directly from a product card OR from cart
+  // Pre-load items & dates when opened directly from a product card OR from cart
   useEffect(() => {
     if (showNewRentalModal) {
+      if (preselectedDates) {
+        setStartDate(preselectedDates.startDate);
+        setEndDate(preselectedDates.endDate);
+      }
       if (preselectedItem) {
         setSelectedItems([
           {
@@ -129,7 +135,7 @@ export default function ModalNewRental() {
         );
       }
     }
-  }, [showNewRentalModal, preselectedItem, cart]);
+  }, [showNewRentalModal, preselectedItem, preselectedDates, cart]);
 
   // Reset custom DP when items change
   useEffect(() => {
@@ -205,6 +211,8 @@ export default function ModalNewRental() {
 
   const handleClose = () => {
     setShowNewRentalModal(false);
+    clearPreselected();
+    setSelectedItems([]);
     setCustomDownPayment(null);
     setWizardStep(1);
     setSearchQuery("");
@@ -224,6 +232,10 @@ export default function ModalNewRental() {
       alert("Pilih minimal satu alat untuk disewa!");
       return;
     }
+    if (endDate < startDate) {
+      alert("Tanggal pengembalian tidak boleh sebelum tanggal pengambilan!");
+      return;
+    }
 
     const initialStatus =
       currentUser.role === "customer" ? "pending_dp" : "active";
@@ -234,7 +246,8 @@ export default function ModalNewRental() {
       100 + Math.random() * 900
     )}`;
 
-    addRental({
+    const createdRental = addRental({
+      bookingCode: code,
       customerId: currentUser.id,
       customerName,
       customerPhone,
@@ -256,36 +269,59 @@ export default function ModalNewRental() {
       notes,
     });
 
+    const isCustomer = currentUser.role === "customer";
     // Generate WhatsApp direct reservation text
-    const waText = encodeURIComponent(
-      `*KONFIRMASI RESERVASI & PEMBAYARAN DP TRIVA OUTDOOR*\n\n` +
-      `Halo Kak *${customerName}*,\n` +
-      `Terima kasih telah melakukan reservasi sewa alat di *${settings.storeName}*.\n\n` +
-      `🔖 *Kode Booking:* #${code}\n` +
-      `📅 *Jadwal Sewa:* ${startDate} s/d ${endDate} (${durationDays} Hari Kalender)\n` +
-      `🎒 *Daftar Perlengkapan:*\n` +
-      selectedItems.map((it) => `- ${it.name} (${it.unitCode}) x${it.qty}`).join("\n") + "\n\n" +
-      `💵 *Rincian Pembayaran DP:*\n` +
-      `- Total Biaya Sewa: Rp ${totalAmount.toLocaleString("id-ID")}\n` +
-      `- Tagihan DP: *Rp ${Number(downPayment).toLocaleString("id-ID")}* via ${
-        paymentMethod === "qris" ? "QRIS Instan" : "Transfer Bank"
-      }\n` +
-      `- Sisa Pelunasan di Toko: Rp ${remainingAmount.toLocaleString("id-ID")}\n` +
-      `- Jaminan Fisik Wajib: ${idCardType} Asli (Disimpan di Brankas Toko)\n\n` +
-      `📍 *Alamat Toko:* ${settings.storeAddress}\n` +
-      `⏰ *Batas Jam Pengembalian:* Pukul ${settings.returnDeadlineHour} WIB di hari terakhir.\n\n` +
-      `Saya kirimkan bukti pembayaran DP saya ya min.`
-    );
+    const waText = isCustomer
+      ? encodeURIComponent(
+          `*KONFIRMASI RESERVASI & PEMBAYARAN DP TRIVA OUTDOOR*\n\n` +
+          `Halo Admin *${settings.storeName}*,\n` +
+          `Saya telah melakukan reservasi sewa alat atas nama *${customerName}*:\n\n` +
+          `🔖 *Kode Booking:* #${createdRental.bookingCode}\n` +
+          `📅 *Jadwal Sewa:* ${startDate} s/d ${endDate} (${durationDays} Hari Kalender)\n` +
+          `🎒 *Daftar Perlengkapan:*\n` +
+          selectedItems.map((it) => `- ${it.name} (${it.unitCode}) x${it.qty}`).join("\n") + "\n\n" +
+          `💵 *Rincian Pembayaran DP:*\n` +
+          `- Total Biaya Sewa: Rp ${totalAmount.toLocaleString("id-ID")}\n` +
+          `- Tagihan DP: *Rp ${Number(downPayment).toLocaleString("id-ID")}* via ${
+            paymentMethod === "qris" ? "QRIS Instan" : "Transfer Bank"
+          }\n` +
+          `- Sisa Pelunasan di Toko: Rp ${remainingAmount.toLocaleString("id-ID")}\n` +
+          `- Jaminan Fisik Wajib: ${idCardType} Asli (Disimpan di Brankas Toko)\n\n` +
+          `📍 *Alamat Toko:* ${settings.storeAddress}\n` +
+          `⏰ *Batas Jam Pengembalian:* Pukul ${settings.returnDeadlineHour} WIB di hari terakhir.\n\n` +
+          `Saya kirimkan bukti pembayaran DP saya ya min.`
+        )
+      : encodeURIComponent(
+          `*KONFIRMASI RESERVASI SEWA TRIVA OUTDOOR*\n\n` +
+          `Halo Kak *${customerName}*,\n` +
+          `Terima kasih telah melakukan reservasi sewa alat di *${settings.storeName}*.\n\n` +
+          `🔖 *Kode Booking:* #${createdRental.bookingCode}\n` +
+          `📅 *Jadwal Sewa:* ${startDate} s/d ${endDate} (${durationDays} Hari Kalender)\n` +
+          `🎒 *Daftar Perlengkapan:*\n` +
+          selectedItems.map((it) => `- ${it.name} (${it.unitCode}) x${it.qty}`).join("\n") + "\n\n" +
+          `💵 *Rincian Pembayaran:*\n` +
+          `- Total Biaya Sewa: Rp ${totalAmount.toLocaleString("id-ID")}\n` +
+          `- DP Dibayar: *Rp ${Number(downPayment).toLocaleString("id-ID")}* via ${
+            paymentMethod === "qris" ? "QRIS Instan" : paymentMethod === "cash" ? "Tunai / Cash" : "Transfer Bank"
+          }\n` +
+          `- Sisa Pelunasan di Toko: Rp ${remainingAmount.toLocaleString("id-ID")}\n` +
+          `- Jaminan Fisik Wajib: ${idCardType} Asli (Disimpan di Brankas Toko)\n\n` +
+          `📍 *Alamat Toko:* ${settings.storeAddress}\n` +
+          `⏰ *Batas Jam Pengembalian:* Pukul ${settings.returnDeadlineHour} WIB di hari terakhir.`
+        );
 
-    const cleanPhone = customerPhone.replace(/\D/g, "").replace(/^0/, "62");
-    const waUrl = `https://wa.me/${cleanPhone}?text=${waText}`;
+    const targetPhone = isCustomer
+      ? (settings.storePhoneWa || "6281234567890").replace(/\D/g, "").replace(/^0/, "62")
+      : customerPhone.replace(/\D/g, "").replace(/^0/, "62");
+    const waUrl = `https://wa.me/${targetPhone}?text=${waText}`;
 
-    // Kosongkan keranjang belanja karena sudah berhasil dipesan
+    // Kosongkan keranjang belanja dan preselected state
     clearCart();
+    clearPreselected();
 
     // Switch view to completed payment screen
     setCompletedBooking({
-      bookingCode: code,
+      bookingCode: createdRental.bookingCode,
       customerName,
       customerPhone,
       totalAmount,
@@ -764,7 +800,14 @@ export default function ModalNewRental() {
                     <input
                       type="date"
                       value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
+                      min={new Date().toISOString().slice(0, 10)}
+                      onChange={(e) => {
+                        const newStart = e.target.value;
+                        setStartDate(newStart);
+                        if (newStart > endDate) {
+                          setEndDate(newStart);
+                        }
+                      }}
                       className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 font-bold bg-white focus:outline-none focus:border-triva-crimson"
                       required
                     />
@@ -774,6 +817,7 @@ export default function ModalNewRental() {
                     <input
                       type="date"
                       value={endDate}
+                      min={startDate}
                       onChange={(e) => setEndDate(e.target.value)}
                       className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 font-bold bg-white focus:outline-none focus:border-triva-crimson"
                       required

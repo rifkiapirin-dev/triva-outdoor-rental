@@ -170,7 +170,12 @@ export default function Navbar() {
 
               {/* Account Dropdown */}
               {showRoleDropdown && (
-                <div className="absolute right-0 mt-2 w-64 max-w-[90vw] bg-white rounded-2xl shadow-2xl border border-slate-200 py-3 z-50 text-xs animate-in fade-in slide-in-from-top-1">
+                <>
+                  <div
+                    className="fixed inset-0 z-40 cursor-default"
+                    onClick={() => setShowRoleDropdown(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-64 max-w-[90vw] bg-white rounded-2xl shadow-2xl border border-slate-200 py-3 z-50 text-xs animate-in fade-in slide-in-from-top-1">
                   {/* User Profile Header */}
                   <div className="px-4 pb-3 border-b border-slate-100 flex items-start gap-2.5">
                     <div className="w-9 h-9 rounded-xl bg-slate-900 text-white font-black text-xs flex items-center justify-center shrink-0">
@@ -217,7 +222,8 @@ export default function Navbar() {
                     </button>
                   </div>
                 </div>
-              )}
+              </>
+            )}
             </div>
           </div>
         </div>

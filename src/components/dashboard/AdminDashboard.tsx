@@ -49,21 +49,21 @@ export default function AdminDashboard() {
   const todayStr = new Date().toISOString().slice(0, 10);
   const currentMonthStr = new Date().toISOString().slice(0, 7);
 
-  const totalOmset = rentals.reduce((sum, r) => sum + r.totalAmount, 0);
-  const totalDpKas = rentals.reduce((sum, r) => sum + r.downPayment, 0);
-  const totalRemaining = rentals.reduce((sum, r) => sum + r.remainingAmount, 0);
-  const rentedItemsCount = items.filter((i) => i.status === "rented").length;
-  const availableItemsCount = items.filter((i) => i.status === "available").length;
-  const utilizationRate = Math.round((rentedItemsCount / items.length) * 100) || 0;
-  const overdueCount = rentals.filter((r) => r.status === "active" && r.endDate < new Date().toISOString().slice(0, 10)).length;
-  const ktpHeldCount = rentals.filter((r) => r.status === "active" || r.status === "confirmed").length;
-
   const timeFilteredRentals = rentals.filter((r) => {
     const recordDate = r.createdAt ? r.createdAt.slice(0, 10) : r.startDate;
     if (timeFilter === "today" && recordDate !== todayStr) return false;
     if (timeFilter === "this_month" && !recordDate.startsWith(currentMonthStr)) return false;
     return true;
   });
+
+  const totalOmset = timeFilteredRentals.reduce((sum, r) => sum + r.totalAmount, 0);
+  const totalDpKas = timeFilteredRentals.reduce((sum, r) => sum + r.downPayment, 0);
+  const totalRemaining = timeFilteredRentals.reduce((sum, r) => sum + r.remainingAmount, 0);
+  const rentedItemsCount = items.filter((i) => i.status === "rented").length;
+  const availableItemsCount = items.filter((i) => i.status === "available").length;
+  const utilizationRate = Math.round((rentedItemsCount / items.length) * 100) || 0;
+  const overdueCount = rentals.filter((r) => r.status === "active" && r.endDate < new Date().toISOString().slice(0, 10)).length;
+  const ktpHeldCount = rentals.filter((r) => r.status === "active" || r.status === "confirmed").length;
 
   const filteredRentals = timeFilteredRentals.filter(
     (r) =>
@@ -119,6 +119,56 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* Metric Cards Header & Period Filter */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-1">
+        <div>
+          <span className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+            <TrendingUp className="w-4 h-4 text-triva-crimson" />
+            Ringkasan Keuangan & Utilisasi Toko
+          </span>
+          <span className="text-[11px] text-slate-400">
+            {timeFilter === "today"
+              ? "Periode: Hari Ini"
+              : timeFilter === "this_month"
+              ? "Periode: Bulan Ini"
+              : "Periode: Akumulasi Seluruh Waktu"}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl text-[11px] font-bold self-start sm:self-auto">
+          <button
+            onClick={() => setTimeFilter("all")}
+            className={`px-3 py-1 rounded-lg transition-all ${
+              timeFilter === "all"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            Semua
+          </button>
+          <button
+            onClick={() => setTimeFilter("today")}
+            className={`px-3 py-1 rounded-lg transition-all ${
+              timeFilter === "today"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            Hari Ini
+          </button>
+          <button
+            onClick={() => setTimeFilter("this_month")}
+            className={`px-3 py-1 rounded-lg transition-all ${
+              timeFilter === "this_month"
+                ? "bg-blue-600 text-white shadow-xs"
+                : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            Bulan Ini
+          </button>
+        </div>
+      </div>
+
       {/* 4 Financial & Business Metric Cards (Konsep 1: Modern Bento Grid + Sparkline & Fleet Progress Bar) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
         {/* KARTU 1: TOTAL OMSET RESERVASI */}
@@ -154,7 +204,11 @@ export default function AdminDashboard() {
                 Rp {totalOmset.toLocaleString("id-ID")}
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5 font-medium">
-                Akumulasi seluruh pesanan aktif &amp; booking
+                {timeFilter === "today"
+                  ? "Transaksi rental hari ini"
+                  : timeFilter === "this_month"
+                  ? "Transaksi rental bulan ini"
+                  : "Akumulasi seluruh pesanan aktif & booking"}
               </p>
             </div>
 
@@ -237,7 +291,11 @@ export default function AdminDashboard() {
                 Rp {totalDpKas.toLocaleString("id-ID")}
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5 font-medium">
-                DP &amp; pelunasan masuk terverifikasi
+                {timeFilter === "today"
+                  ? "Kas DP hari ini via QRIS & Transfer"
+                  : timeFilter === "this_month"
+                  ? "Kas DP bulan ini via QRIS & Transfer"
+                  : "DP & pelunasan masuk terverifikasi"}
               </p>
             </div>
 

@@ -46,7 +46,7 @@ export default function CartDrawer() {
     const s = new Date(startDate);
     const e = new Date(endDate);
     const diff = e.getTime() - s.getTime();
-    const days = Math.ceil(diff / (1000 * 3600 * 24));
+    const days = Math.ceil(diff / (1000 * 3600 * 24)) + 1;
     return days > 0 ? days : 1;
   };
 
@@ -240,7 +240,13 @@ export default function CartDrawer() {
                       type="date"
                       value={startDate}
                       min={new Date().toISOString().slice(0, 10)}
-                      onChange={(e) => setStartDate(e.target.value)}
+                      onChange={(e) => {
+                        const newStart = e.target.value;
+                        setStartDate(newStart);
+                        if (newStart > endDate) {
+                          setEndDate(newStart);
+                        }
+                      }}
                       className="w-full text-xs p-2 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-triva-crimson"
                     />
                   </div>
@@ -309,7 +315,7 @@ export default function CartDrawer() {
           <div className="p-4 bg-white border-t border-slate-200 shrink-0 space-y-2">
             <button
               type="button"
-              onClick={checkoutFromCart}
+              onClick={() => checkoutFromCart({ startDate, endDate })}
               className="w-full py-3.5 rounded-2xl bg-triva-crimson hover:bg-triva-crimson-700 text-white text-xs sm:text-sm font-black shadow-lg shadow-triva-crimson-950/20 active:scale-95 transition-all flex items-center justify-center gap-2"
             >
               <span>Lanjut ke Booking &amp; DP QRIS</span>

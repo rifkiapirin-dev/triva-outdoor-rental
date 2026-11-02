@@ -144,7 +144,15 @@ export const DEFAULT_SHOWCASE_SLIDES: ShowcaseSlide[] = [
 ];
 
 export default function HeroBannerCarousel() {
-  const { setShowNewRentalModal, cart, settings, notify, currentUser } = useApp();
+  const {
+    setShowNewRentalModal,
+    openNewRentalModalWithItem,
+    items,
+    cart,
+    settings,
+    notify,
+    currentUser,
+  } = useApp();
   const isAdmin = currentUser?.role === "admin";
   const [slides, setSlides] = useState<ShowcaseSlide[]>(DEFAULT_SHOWCASE_SLIDES);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -158,6 +166,47 @@ export default function HeroBannerCarousel() {
   });
   const [isPaused, setIsPaused] = useState(false);
   const [editingSlide, setEditingSlide] = useState<ShowcaseSlide | null>(null);
+
+  const handleGetTheLook = (slide: ShowcaseSlide) => {
+    const slideNameLower = slide.name.toLowerCase();
+    const slidePillLower = slide.categoryPill.toLowerCase();
+    const matchedItem = items.find((it) => {
+      const itName = it.name.toLowerCase();
+      const itCat = it.categoryName.toLowerCase();
+      if (itName.includes(slideNameLower) || slideNameLower.includes(itName)) return true;
+      if (
+        (slidePillLower.includes("jacket") || slideNameLower.includes("jacket") || slideNameLower.includes("jaket")) &&
+        (itCat.includes("jacket") || itCat.includes("jaket") || itName.includes("jacket") || itName.includes("jaket"))
+      ) {
+        return true;
+      }
+      if (
+        (slidePillLower.includes("boots") || slideNameLower.includes("boots") || slideNameLower.includes("sepatu")) &&
+        (itCat.includes("sepatu") || itCat.includes("boot") || itName.includes("sepatu") || itName.includes("boot"))
+      ) {
+        return true;
+      }
+      if (
+        (slidePillLower.includes("tenda") || slideNameLower.includes("tenda") || slideNameLower.includes("tent")) &&
+        (itCat.includes("tenda") || itCat.includes("tent") || itName.includes("tenda"))
+      ) {
+        return true;
+      }
+      if (
+        (slidePillLower.includes("carrier") || slidePillLower.includes("bag") || slideNameLower.includes("carrier")) &&
+        (itCat.includes("bag") || itCat.includes("carrier") || itName.includes("carrier"))
+      ) {
+        return true;
+      }
+      return false;
+    });
+
+    if (matchedItem && openNewRentalModalWithItem) {
+      openNewRentalModalWithItem(matchedItem);
+    } else {
+      setShowNewRentalModal(true);
+    }
+  };
 
   // Load custom saved slides from localStorage & server on mount
   useEffect(() => {
@@ -456,7 +505,7 @@ export default function HeroBannerCarousel() {
                       {/* Action Button: Get the look > (Sewa Sekarang) */}
                       <div className="pt-2">
                         <button
-                          onClick={() => setShowNewRentalModal(true)}
+                          onClick={() => handleGetTheLook(slide)}
                           className="px-7 py-3 rounded-full bg-white text-slate-950 hover:bg-white/90 font-black text-xs sm:text-sm tracking-wide shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
                         >
                           <span>Get the look</span>
@@ -680,7 +729,7 @@ export default function HeroBannerCarousel() {
 
                         {/* CTA Button */}
                         <button
-                          onClick={() => setShowNewRentalModal(true)}
+                          onClick={() => handleGetTheLook(slide)}
                           className="px-5 py-2 rounded-full bg-white text-slate-950 font-black text-xs shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5"
                         >
                           <span>Get the look</span>
