@@ -240,9 +240,17 @@ export default function CustomerDashboard() {
           {/* Payment & Collateral Status */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs pt-1">
             <div className="flex items-center gap-2">
-              <span className="text-slate-500">Sisa Pelunasan:</span>
-              <span className="font-extrabold text-sm text-triva-crimson">
-                Rp {activeRental.remainingAmount.toLocaleString("id-ID")}
+              <span className="text-slate-500">
+                {activeRental.remainingAmount === 0 ? "Pelunasan:" : "Sisa Pelunasan (Saat Ambil Alat):"}
+              </span>
+              <span
+                className={`font-extrabold text-sm ${
+                  activeRental.remainingAmount === 0 ? "text-emerald-700" : "text-triva-crimson"
+                }`}
+              >
+                {activeRental.remainingAmount === 0
+                  ? "✓ LUNAS"
+                  : `Rp ${activeRental.remainingAmount.toLocaleString("id-ID")}`}
               </span>
               <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold">
                 Jaminan: {activeRental.idCardType}

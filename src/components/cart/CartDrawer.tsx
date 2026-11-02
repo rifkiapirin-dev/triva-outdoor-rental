@@ -297,10 +297,10 @@ export default function CartDrawer() {
                     </span>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] font-semibold text-slate-500 block">
-                      Sisa Bayar di Toko:
+                    <span className="text-[10px] font-bold text-amber-900 block">
+                      Sisa Pelunasan (Saat Ambil Alat):
                     </span>
-                    <span className="text-xs font-black text-slate-700">
+                    <span className="text-xs font-black text-amber-950">
                       Rp {remainingAmount.toLocaleString("id-ID")}
                     </span>
                   </div>

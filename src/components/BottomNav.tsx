@@ -1,14 +1,29 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Home, Tent, Plus, Receipt, BarChart3, UserCheck, Shield } from "lucide-react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Home, Tent, Plus, Receipt, History, Compass, BarChart3 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 
-export default function BottomNav() {
+function BottomNavContent() {
   const pathname = usePathname();
-  const { currentUser, setShowNewRentalModal } = useApp();
+  const searchParams = useSearchParams();
+  const currentView = searchParams.get("view") || "active";
+  const { currentUser, setShowNewRentalModal, rentals } = useApp();
+
+  const userRentals = rentals.filter((r) => {
+    if (currentUser.role === "customer" && r.customerId !== currentUser.id) return false;
+    return true;
+  });
+
+  const activeRentalsCount = userRentals.filter(
+    (r) => r.status === "pending_dp" || r.status === "confirmed" || r.status === "active"
+  ).length;
+
+  const isRentalsPage = pathname === "/dashboard/rentals";
+  const isActiveViewActive = isRentalsPage && currentView === "active";
+  const isHistoryViewActive = isRentalsPage && currentView === "history";
 
   return (
     <nav
@@ -54,38 +69,49 @@ export default function BottomNav() {
           <span className="text-[10px] mt-1 font-bold text-triva-crimson">Sewa</span>
         </div>
 
-        {/* Tab 3: Transaksi / Sewa */}
+        {/* Tab 4: Sewa Saya / Sewa Aktif (Berjalan) */}
         <Link
-          href="/dashboard/rentals"
-          className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
-            pathname === "/dashboard/rentals"
+          href="/dashboard/rentals?view=active"
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition-all relative ${
+            isActiveViewActive
               ? "text-triva-crimson font-bold"
               : "text-slate-400 hover:text-slate-600"
           }`}
         >
-          <Receipt className={`w-5 h-5 ${pathname === "/dashboard/rentals" ? "text-triva-crimson" : "text-slate-400"}`} />
-          <span className="text-[10px] mt-1 tracking-tight">Transaksi</span>
+          <div className="relative">
+            <Compass className={`w-5 h-5 ${isActiveViewActive ? "text-triva-crimson" : "text-slate-400"}`} />
+            {activeRentalsCount > 0 && (
+              <span className="absolute -top-1 -right-2 w-3.5 h-3.5 bg-triva-crimson text-white rounded-full text-[8px] font-black flex items-center justify-center">
+                {activeRentalsCount}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] mt-1 tracking-tight">
+            {currentUser.role === "customer" ? "Sewa Saya" : "Kasir"}
+          </span>
         </Link>
 
-        {/* Tab 4: Laporan (Admin/Staff) / Akun (Customer) */}
+        {/* Tab 5: Riwayat Transaksi */}
         <Link
-          href={currentUser.role === "admin" ? "/dashboard/reports" : "/dashboard/rentals"}
+          href="/dashboard/rentals?view=history"
           className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
-            pathname === "/dashboard/reports"
+            isHistoryViewActive
               ? "text-triva-crimson font-bold"
               : "text-slate-400 hover:text-slate-600"
           }`}
         >
-          {currentUser.role === "admin" ? (
-            <BarChart3 className={`w-5 h-5 ${pathname === "/dashboard/reports" ? "text-triva-crimson" : "text-slate-400"}`} />
-          ) : (
-            <UserCheck className={`w-5 h-5 ${pathname === "/dashboard/rentals" ? "text-triva-crimson" : "text-slate-400"}`} />
-          )}
-          <span className="text-[10px] mt-1 tracking-tight">
-            {currentUser.role === "admin" ? "Laporan" : "Sewa Saya"}
-          </span>
+          <History className={`w-5 h-5 ${isHistoryViewActive ? "text-triva-crimson" : "text-slate-400"}`} />
+          <span className="text-[10px] mt-1 tracking-tight">Riwayat</span>
         </Link>
       </div>
     </nav>
+  );
+}
+
+export default function BottomNav() {
+  return (
+    <Suspense fallback={null}>
+      <BottomNavContent />
+    </Suspense>
   );
 }

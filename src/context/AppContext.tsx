@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
-import { User, UserRole, GearItem, GearCategory, RentalTransaction, StoreSettings, CartItem } from "@/types";
+import { User, UserRole, GearItem, GearCategory, RentalTransaction, StoreSettings, CartItem, PaymentMethod } from "@/types";
 import { createClient } from "@/lib/supabase/client";
 
 function mapRentalToDb(r: RentalTransaction) {
@@ -26,6 +26,9 @@ function mapRentalToDb(r: RentalTransaction) {
     notes: r.notes || null,
     penalty_amount: r.penaltyAmount || 0,
     penalty_notes: r.penaltyNotes || null,
+    pelunasan_paid: r.pelunasanPaid || false,
+    pelunasan_method: r.pelunasanMethod || null,
+    pelunasan_paid_at: r.pelunasanPaidAt || null,
     created_at: r.createdAt,
   };
 }
@@ -52,6 +55,9 @@ function mapRentalFromDb(row: any): RentalTransaction {
     notes: row.notes || undefined,
     penaltyAmount: Number(row.penalty_amount) || 0,
     penaltyNotes: row.penalty_notes || undefined,
+    pelunasanPaid: Boolean(row.pelunasan_paid),
+    pelunasanMethod: row.pelunasan_method || undefined,
+    pelunasanPaidAt: row.pelunasan_paid_at || undefined,
     createdAt: row.created_at,
   };
 }
@@ -126,7 +132,13 @@ interface AppContextType {
       bookingCode?: string;
     }
   ) => RentalTransaction;
-  updateRentalStatus: (id: string, newStatus: RentalTransaction["status"], penalty?: number, penaltyNotes?: string) => void;
+  updateRentalStatus: (
+    id: string,
+    newStatus: RentalTransaction["status"],
+    penalty?: number,
+    penaltyNotes?: string,
+    pelunasanData?: { method: PaymentMethod }
+  ) => void;
   deleteRental: (id: string) => void;
   cart: CartItem[];
   addToCart: (item: GearItem) => void;
@@ -1437,7 +1449,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     id: string,
     newStatus: RentalTransaction["status"],
     penalty = 0,
-    penaltyNotes = ""
+    penaltyNotes = "",
+    pelunasanData?: { method: PaymentMethod }
   ) => {
     // STRICT SECURITY: Hanya Staf Kasir atau Admin yang berhak mengubah status / menyetujui pesanan
     if (currentUser.role === "customer") {
@@ -1446,19 +1459,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     let targetBookingCode = "";
+    let targetRemaining = 0;
     setRentals((prev) =>
       prev.map((r) => {
         if (r.id === id) {
           targetBookingCode = r.bookingCode;
+          targetRemaining = r.remainingAmount;
+          const isPelunasan = newStatus === "active" && (pelunasanData || r.remainingAmount > 0);
           return {
             ...r,
             status: newStatus,
             handledByStaffName:
-              newStatus === "confirmed" && !r.handledByStaffName
+              (newStatus === "confirmed" || newStatus === "active") && !r.handledByStaffName
                 ? currentUser.name
                 : r.handledByStaffName,
             penaltyAmount: penalty > 0 ? penalty : r.penaltyAmount,
             penaltyNotes: penaltyNotes || r.penaltyNotes,
+            ...(isPelunasan
+              ? {
+                  remainingAmount: 0,
+                  pelunasanPaid: true,
+                  pelunasanMethod: pelunasanData?.method || "cash",
+                  pelunasanPaidAt: new Date().toISOString(),
+                }
+              : {}),
           };
         }
         return r;
@@ -1520,9 +1544,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const updatePayload: any = {
           status: newStatus,
           handled_by_staff_name:
-            newStatus === "confirmed" ? currentUser.name : undefined,
+            newStatus === "confirmed" || newStatus === "active" ? currentUser.name : undefined,
           penalty_amount: penalty > 0 ? penalty : undefined,
           penalty_notes: penaltyNotes || undefined,
+          ...(newStatus === "active" && (pelunasanData || targetRemaining > 0)
+            ? {
+                remaining_amount: 0,
+                pelunasan_paid: true,
+                pelunasan_method: pelunasanData?.method || "cash",
+                pelunasan_paid_at: new Date().toISOString(),
+              }
+            : {}),
         };
         Object.keys(updatePayload).forEach(
           (k) => updatePayload[k] === undefined && delete updatePayload[k]
@@ -1542,7 +1574,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (newStatus === "confirmed") {
       notify(`Pesanan ${targetBookingCode || id} disetujui & dikonfirmasi oleh ${currentUser.name}! Siap diambil di toko.`, "success");
     } else if (newStatus === "active") {
-      notify(`Alat ${targetBookingCode || id} berhasil diserahkan ke pendaki. KTP fisik asli aman disimpan di brankas!`, "success");
+      const pelunasanInfo = pelunasanData && targetRemaining > 0
+        ? ` (Pelunasan Rp ${targetRemaining.toLocaleString("id-ID")} via ${pelunasanData.method.toUpperCase()} Lunas)`
+        : "";
+      notify(`Alat ${targetBookingCode || id} resmi diserahkan ke pendaki${pelunasanInfo}. KTP fisik asli aman disimpan di brankas!`, "success");
     } else if (newStatus === "returned") {
       notify(`Pengembalian ${targetBookingCode || id} selesai diperiksa. Jaminan KTP dikembalikan!`, "success");
     } else if (newStatus === "cancelled") {

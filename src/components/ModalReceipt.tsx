@@ -215,9 +215,15 @@ export default function ModalReceipt({
               <span>Uang Muka (DP via {rental.paymentMethod.toUpperCase()}):</span>
               <span>Rp {rental.downPayment.toLocaleString("id-ID")} (LUNAS)</span>
             </div>
-            <div className="flex justify-between text-amber-900 font-black">
-              <span>Sisa Pelunasan di Toko:</span>
-              <span>Rp {rental.remainingAmount.toLocaleString("id-ID")}</span>
+            <div className="flex justify-between font-black">
+              <span className={rental.remainingAmount === 0 ? "text-emerald-700" : "text-amber-900"}>
+                {rental.remainingAmount === 0 ? "Pelunasan saat Pengambilan:" : "Sisa Pelunasan (Ambil Alat):"}
+              </span>
+              <span className={rental.remainingAmount === 0 ? "text-emerald-700" : "text-amber-900"}>
+                {rental.remainingAmount === 0
+                  ? `✓ LUNAS${rental.pelunasanMethod ? ` (${rental.pelunasanMethod.toUpperCase()})` : ""}`
+                  : `Rp ${rental.remainingAmount.toLocaleString("id-ID")}`}
+              </span>
             </div>
             {rental.status === "returned" && (
               <div className="flex justify-between text-emerald-700 font-bold bg-emerald-50 p-1.5 rounded">

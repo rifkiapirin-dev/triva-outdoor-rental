@@ -77,6 +77,9 @@ export interface RentalTransaction {
   notes?: string;
   penaltyAmount?: number;
   penaltyNotes?: string;
+  pelunasanPaid?: boolean;
+  pelunasanMethod?: PaymentMethod;
+  pelunasanPaidAt?: string;
   createdAt: string;
 }
 

@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import {
   Home,
@@ -15,11 +15,14 @@ import {
   PlusCircle,
   X,
   LogOut,
+  History,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 
-export default function Sidebar() {
+function SidebarContent() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentView = searchParams.get("view") || "active";
   const {
     currentUser,
     isMobileMenuOpen,
@@ -29,17 +32,37 @@ export default function Sidebar() {
     logout,
   } = useApp();
 
+  const userRentals = rentals.filter((r) => {
+    if (currentUser.role === "customer" && r.customerId !== currentUser.id) return false;
+    return true;
+  });
+
+  const activeRentalsCount = userRentals.filter(
+    (r) => r.status === "pending_dp" || r.status === "confirmed" || r.status === "active"
+  ).length;
+
   const pendingCount = rentals.filter((r) => r.status === "pending_dp").length;
-  const activeCount = rentals.filter((r) => r.status === "active").length;
 
   const navLinks = [
     { label: "Dashboard", href: "/dashboard", icon: Home },
     { label: "Katalog & Stok", href: "/dashboard/catalog", icon: Tent },
     {
-      label: "Transaksi Sewa",
-      href: "/dashboard/rentals",
+      label: currentUser.role === "customer" ? "Sewa Saya (Aktif)" : "Kasir & Sewa Berjalan",
+      href: "/dashboard/rentals?view=active",
       icon: Receipt,
-      badge: pendingCount > 0 ? `${pendingCount} baru` : undefined,
+      badge:
+        currentUser.role === "customer"
+          ? activeRentalsCount > 0
+            ? `${activeRentalsCount} aktif`
+            : undefined
+          : pendingCount > 0
+          ? `${pendingCount} baru`
+          : undefined,
+    },
+    {
+      label: "Riwayat Transaksi",
+      href: "/dashboard/rentals?view=history",
+      icon: History,
     },
     ...(currentUser.role === "admin"
       ? [{ label: "Laporan Omset", href: "/dashboard/reports", icon: BarChart3 }]
@@ -116,7 +139,12 @@ export default function Sidebar() {
           </div>
           {navLinks.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href;
+            const isActive = item.href.includes("?")
+              ? pathname === "/dashboard/rentals" &&
+                (item.href.includes("view=history")
+                  ? currentView === "history"
+                  : currentView === "active")
+              : pathname === item.href;
             return (
               <Link
                 key={item.href}
@@ -194,5 +222,13 @@ export default function Sidebar() {
         </div>
       )}
     </>
+  );
+}
+
+export default function Sidebar() {
+  return (
+    <Suspense fallback={<aside className="hidden lg:flex w-64 bg-white border-r border-slate-200 h-screen sticky top-0" />}>
+      <SidebarContent />
+    </Suspense>
   );
 }
