@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   MapPin,
@@ -11,7 +11,13 @@ import {
   Check,
   X,
   Compass,
+  Pencil,
+  Upload,
+  Sparkles,
+  RotateCcw,
+  Plus,
 } from "lucide-react";
+import { useApp } from "@/context/AppContext";
 
 function InstagramIcon({ className = "w-4 h-4" }: { className?: string }) {
   return (
@@ -31,7 +37,7 @@ function InstagramIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-interface UgcPhoto {
+export interface UgcPhoto {
   id: string;
   climberName: string;
   username: string;
@@ -44,7 +50,7 @@ interface UgcPhoto {
   likes: number;
 }
 
-const INITIAL_UGC_PHOTOS: UgcPhoto[] = [
+export const INITIAL_UGC_PHOTOS: UgcPhoto[] = [
   {
     id: "ugc-1",
     climberName: "Rifki Arifin",
@@ -126,14 +132,44 @@ const MOUNTAIN_FILTERS = [
   { label: "Gn. Prau", slug: "prau" },
   { label: "Gn. Gede", slug: "gede" },
   { label: "Gn. Merbabu", slug: "merbabu" },
+  { label: "Gn. Putri", slug: "putri" },
 ];
 
 export default function TestimonialCommunitySection() {
+  const { currentUser, notify } = useApp();
+  const isAdmin = currentUser?.role === "admin";
+
   const [selectedMountain, setSelectedMountain] = useState<string>("all");
   const [ugcPhotos, setUgcPhotos] = useState<UgcPhoto[]>(INITIAL_UGC_PHOTOS);
   const [likedPhotos, setLikedPhotos] = useState<Record<string, boolean>>({});
   const [selectedPhotoModal, setSelectedPhotoModal] = useState<UgcPhoto | null>(null);
+  const [editingPhoto, setEditingPhoto] = useState<UgcPhoto | null>(null);
   const [copiedHashtag, setCopiedHashtag] = useState<boolean>(false);
+
+  // Form edit state
+  const [editImageUrl, setEditImageUrl] = useState("");
+  const [editClimberName, setEditClimberName] = useState("");
+  const [editUsername, setEditUsername] = useState("");
+  const [editMountain, setEditMountain] = useState("");
+  const [editAltitude, setEditAltitude] = useState("");
+  const [editCaption, setEditCaption] = useState("");
+
+  // Load photos from localStorage on client mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("triva_ugc_photos");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setUgcPhotos(parsed);
+          }
+        }
+      } catch (e) {
+        console.error("Gagal membaca galeri dari localStorage:", e);
+      }
+    }
+  }, []);
 
   // Filter photos based on mountain selection
   const filteredPhotos =
@@ -146,8 +182,8 @@ export default function TestimonialCommunitySection() {
       const isCurrentlyLiked = !!prev[id];
       const newStatus = !isCurrentlyLiked;
 
-      setUgcPhotos((currentPhotos) =>
-        currentPhotos.map((p) => {
+      setUgcPhotos((currentPhotos) => {
+        const updated = currentPhotos.map((p) => {
           if (p.id === id) {
             return {
               ...p,
@@ -155,8 +191,14 @@ export default function TestimonialCommunitySection() {
             };
           }
           return p;
-        })
-      );
+        });
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("triva_ugc_photos", JSON.stringify(updated));
+          } catch (e) {}
+        }
+        return updated;
+      });
 
       return { ...prev, [id]: newStatus };
     });
@@ -170,6 +212,79 @@ export default function TestimonialCommunitySection() {
     }
   };
 
+  // Open Edit Modal (Admin Only)
+  const handleOpenEditModal = (photo: UgcPhoto) => {
+    if (!isAdmin) return;
+    setEditingPhoto(photo);
+    setEditImageUrl(photo.imageUrl);
+    setEditClimberName(photo.climberName);
+    setEditUsername(photo.username);
+    setEditMountain(photo.mountain);
+    setEditAltitude(photo.altitude);
+    setEditCaption(photo.caption);
+  };
+
+  // Handle local file upload (base64)
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("Pilih file gambar valid (.jpg, .png, .webp)");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setEditImageUrl(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Save changes to state & localStorage
+  const handleSaveGalleryEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPhoto) return;
+
+    const updated = ugcPhotos.map((p) => {
+      if (p.id === editingPhoto.id) {
+        return {
+          ...p,
+          imageUrl: editImageUrl || p.imageUrl,
+          climberName: editClimberName || p.climberName,
+          username: editUsername || p.username,
+          mountain: editMountain || p.mountain,
+          altitude: editAltitude || p.altitude,
+          caption: editCaption || p.caption,
+        };
+      }
+      return p;
+    });
+
+    setUgcPhotos(updated);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("triva_ugc_photos", JSON.stringify(updated));
+      } catch (e) {}
+    }
+
+    notify(`Foto galeri "${editClimberName || editingPhoto.climberName}" berhasil diperbarui!`, "success");
+    setEditingPhoto(null);
+  };
+
+  // Reset to default photos (Admin only)
+  const handleResetGallery = () => {
+    if (confirm("Kembalikan seluruh foto galeri komunitas ke bawaan awal?")) {
+      setUgcPhotos(INITIAL_UGC_PHOTOS);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("triva_ugc_photos");
+      }
+      notify("Galeri komunitas telah direset ke foto bawaan awal.", "info");
+    }
+  };
+
   return (
     <section className="space-y-4 pt-2">
       {/* UGC INSTAGRAM COMMUNITY FEED (#StyleOnTheTrail) */}
@@ -180,9 +295,14 @@ export default function TestimonialCommunitySection() {
         {/* Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-rose-300 text-[11px] font-extrabold uppercase tracking-wider mb-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-rose-300 text-[11px] font-extrabold uppercase tracking-wider mb-2">
               <Camera className="w-3.5 h-3.5 text-rose-300" />
               <span>GALERI KOMUNITAS PENDAKI TRIVA</span>
+              {isAdmin && (
+                <span className="bg-amber-400 text-slate-950 px-2 py-0.2 rounded-md font-black text-[9px] ml-1">
+                  Khusus Admin: Bisa Ubah Foto
+                </span>
+              )}
             </div>
             <h3 className="text-lg sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
               <span>#StyleOnTheTrail</span>
@@ -195,7 +315,19 @@ export default function TestimonialCommunitySection() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={handleResetGallery}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-300 hover:text-white transition-all active:scale-95"
+                title="Reset foto galeri ke default"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Reset Default</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={handleCopyHashtag}
@@ -262,12 +394,28 @@ export default function TestimonialCommunitySection() {
                 {/* Gradient Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent opacity-80 group-hover:opacity-95 transition-opacity" />
 
-                {/* Mountain Pill Top */}
+                {/* Mountain Pill Top Left */}
                 <div className="absolute top-2 left-2 z-10">
                   <span className="px-2 py-0.5 rounded-md bg-slate-950/80 text-[9px] font-extrabold text-amber-300 border border-white/10 backdrop-blur-sm">
                     {photo.mountain}
                   </span>
                 </div>
+
+                {/* KHUSUS ADMIN: TOMBOL UBAH FOTO GALERI */}
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenEditModal(photo);
+                    }}
+                    className="absolute top-2 right-2 z-20 px-2 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[9px] shadow-lg flex items-center gap-1 transition-transform hover:scale-105 active:scale-95"
+                    title="Ubah foto dan detail galeri ini (Khusus Admin)"
+                  >
+                    <Pencil className="w-2.5 h-2.5" />
+                    <span>Ganti Foto</span>
+                  </button>
+                )}
 
                 {/* Bottom details */}
                 <div className="absolute bottom-2 left-2 right-2 z-10 space-y-1">
@@ -334,7 +482,7 @@ export default function TestimonialCommunitySection() {
         </div>
       </div>
 
-      {/* MODAL: INSPECT PHOTO DETAIL */}
+      {/* MODAL: INSPECT PHOTO DETAIL (SEMUA USER) */}
       {selectedPhotoModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200 flex flex-col">
@@ -410,7 +558,22 @@ export default function TestimonialCommunitySection() {
                 </div>
               </div>
 
-              <div className="pt-2 flex items-center justify-end">
+              <div className="pt-2 flex items-center justify-between">
+                {isAdmin ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = selectedPhotoModal;
+                      setSelectedPhotoModal(null);
+                      handleOpenEditModal(target);
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-sm transition-colors"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>Ubah Foto Ini (Admin)</span>
+                  </button>
+                ) : <div />}
+
                 <button
                   type="button"
                   onClick={() => setSelectedPhotoModal(null)}
@@ -420,6 +583,177 @@ export default function TestimonialCommunitySection() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: UBAH FOTO GALERI (HANYA UNTUK AKUN ADMIN) */}
+      {isAdmin && editingPhoto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[92vh]">
+            {/* Header Modal Edit */}
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-rose-950 to-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-black text-amber-300 tracking-wider block">
+                    Mode Admin &bull; Kustomisasi Galeri
+                  </span>
+                  <h3 className="text-sm sm:text-base font-black tracking-tight leading-tight">
+                    Ubah Foto &amp; Cerita Pendaki
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingPhoto(null)}
+                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Form Edit */}
+            <form onSubmit={handleSaveGalleryEdit} className="p-5 overflow-y-auto space-y-4 text-xs">
+              {/* Live Preview Foto */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-600 block">
+                  Pratinjau Foto Galeri:
+                </label>
+                <div className="relative aspect-[16/9] w-full rounded-2xl overflow-hidden bg-slate-900 border border-slate-200 shadow-inner">
+                  {editImageUrl ? (
+                    <Image
+                      src={editImageUrl}
+                      alt="Pratinjau"
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-500">
+                      <span>Belum ada gambar</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Upload File Gambar Baru atau Input URL */}
+              <div className="space-y-2 p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">
+                  1. Upload File Gambar dari Laptop / HP:
+                </label>
+                <input
+                  type="file"
+                  accept="image/png, image/jpeg, image/jpg, image/webp"
+                  onChange={handleFileUpload}
+                  className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-triva-crimson file:text-white hover:file:bg-triva-crimson-700 file:cursor-pointer cursor-pointer"
+                />
+
+                <div className="pt-2 border-t border-slate-200">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-700 block mb-1">
+                    2. Atau Masukkan URL Gambar Langsung:
+                  </label>
+                  <input
+                    type="url"
+                    value={editImageUrl}
+                    onChange={(e) => setEditImageUrl(e.target.value)}
+                    placeholder="https://images.unsplash.com/photo-..."
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-triva-crimson bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Data Pendaki & Gunung */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-600 block">
+                    Nama Pendaki:
+                  </label>
+                  <input
+                    type="text"
+                    value={editClimberName}
+                    onChange={(e) => setEditClimberName(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-triva-crimson"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-600 block">
+                    Username Instagram:
+                  </label>
+                  <input
+                    type="text"
+                    value={editUsername}
+                    onChange={(e) => setEditUsername(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-triva-crimson"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-600 block">
+                    Nama Gunung:
+                  </label>
+                  <input
+                    type="text"
+                    value={editMountain}
+                    onChange={(e) => setEditMountain(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-triva-crimson"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-600 block">
+                    Ketinggian (MDPL):
+                  </label>
+                  <input
+                    type="text"
+                    value={editAltitude}
+                    onChange={(e) => setEditAltitude(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-triva-crimson"
+                    placeholder="2.665 MDPL"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Caption */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-600 block">
+                  Caption Cerita / Testimoni:
+                </label>
+                <textarea
+                  value={editCaption}
+                  onChange={(e) => setEditCaption(e.target.value)}
+                  rows={3}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-triva-crimson resize-none"
+                  required
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingPhoto(null)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 font-bold text-xs transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-triva-crimson hover:bg-triva-crimson-700 text-white font-black text-xs shadow-md shadow-triva-crimson/30 active:scale-95 transition-all flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <span>Simpan Perubahan Galeri</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AppProvider } from "@/context/AppContext";
+import FloatingWhatsAppAdmin from "@/components/FloatingWhatsAppAdmin";
 
 export const metadata: Metadata = {
   title: "TRIVA Outdoor — Style on the Trail",
@@ -28,7 +29,10 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body className="min-h-screen bg-slate-50 text-slate-800 antialiased selection:bg-triva-crimson selection:text-white">
-        <AppProvider>{children}</AppProvider>
+        <AppProvider>
+          {children}
+          <FloatingWhatsAppAdmin />
+        </AppProvider>
       </body>
     </html>
   );
