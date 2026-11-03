@@ -161,7 +161,7 @@ const INITIAL_DEMO_USERS: User[] = [
     id: "usr-admin-1",
     name: "Rifki",
     email: "owner@triva.id",
-    phoneWa: "081234567890",
+    phoneWa: "083851284143",
     role: "admin",
     avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80",
   },
@@ -824,7 +824,7 @@ const INITIAL_RENTALS: RentalTransaction[] = [];
 const INITIAL_SETTINGS: StoreSettings = {
   storeName: "TRIVA Outdoor Rental",
   storeTagline: "Style on the Trail",
-  storePhoneWa: "6281234567890",
+  storePhoneWa: "6283851284143",
   storeAddress: "Jl. Kaliurang KM 12.5 No. 88, Sleman, D.I. Yogyakarta",
   minDpPercentage: 30,
   lateFeePerDay: 25000,
@@ -839,6 +839,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (saved) {
           const parsed = JSON.parse(saved);
           if (parsed && parsed.id && parsed.role) {
+            if (parsed.role === "admin" && (parsed.phoneWa === "081234567890" || !parsed.phoneWa)) {
+              parsed.phoneWa = "083851284143";
+            }
             return parsed;
           }
         }

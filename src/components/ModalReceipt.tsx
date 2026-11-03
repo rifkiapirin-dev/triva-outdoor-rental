@@ -17,7 +17,7 @@ export default function ModalReceipt({
   rental,
   onClose,
   storeName = "TRIVA OUTDOOR RENTAL",
-  storePhone = "0812-3456-7890",
+  storePhone = "0838-5128-4143",
   storeAddress = "Jl. Kaliurang KM 9, Sleman, D.I. Yogyakarta",
 }: ModalReceiptProps) {
   const [copied, setCopied] = useState(false);

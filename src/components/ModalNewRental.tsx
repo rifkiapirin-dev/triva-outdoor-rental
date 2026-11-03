@@ -311,7 +311,7 @@ export default function ModalNewRental() {
         );
 
     const targetPhone = isCustomer
-      ? (settings.storePhoneWa || "6281234567890").replace(/\D/g, "").replace(/^0/, "62")
+      ? (settings.storePhoneWa || "6283851284143").replace(/\D/g, "").replace(/^0/, "62")
       : customerPhone.replace(/\D/g, "").replace(/^0/, "62");
     const waUrl = `https://wa.me/${targetPhone}?text=${waText}`;
 

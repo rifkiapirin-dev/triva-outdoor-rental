@@ -21,7 +21,7 @@ export default function FloatingWhatsAppAdmin() {
   const [isOpen, setIsOpen] = useState(false);
   const [complaintText, setComplaintText] = useState("");
 
-  const storePhone = settings?.storePhoneWa || "6281234567890";
+  const storePhone = settings?.storePhoneWa || "6283851284143";
   const cleanPhone = storePhone.replace(/[^0-9]/g, "").replace(/^0/, "62");
 
   const handleSend = (e?: React.FormEvent) => {
