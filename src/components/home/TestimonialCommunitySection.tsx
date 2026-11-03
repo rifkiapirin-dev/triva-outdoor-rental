@@ -59,84 +59,114 @@ export interface UgcPhoto {
 export const INITIAL_UGC_PHOTOS: UgcPhoto[] = [
   {
     id: "ugc-1",
+    climberName: "Rifki & Tim TRIVA",
+    username: "@rifki_arfn",
+    mountain: "Gn. Gede",
+    mountainSlug: "gede",
+    altitude: "2.958 MDPL",
+    imageUrl: "/gallery/triva-puncak-gunung-gede.jpg",
+    caption: "Summit Attack Puncak Gede 2.958 MDPL bareng skuad TRIVA Outdoor! Jaket windproof & trekking pole sewaan aman tembus dinginnya puncak.",
+    taggedGear: [
+      "Jacket Mountain Windproof",
+      "Trekking Pole Carbon",
+      "Sepatu Columbia Redmond",
+      "Topi Rimba Outdoor",
+    ],
+    likes: 489,
+  },
+  {
+    id: "ugc-2",
+    climberName: "Rifki & Crew",
+    username: "@trivaoutdoor",
+    mountain: "Gn. Sagara",
+    mountainSlug: "sagara",
+    altitude: "2.132 MDPL",
+    imageUrl: "/gallery/triva-basecamp-gunung-sagara.jpg",
+    caption: "Siap gas muncak di Basecamp Gunung Sagara 2.132 MDPL. Carrier Deuter & trekking pole TRIVA siap tempur nanjak!",
+    taggedGear: [
+      "Carrier Deuter 65L",
+      "Trekking Pole Carbon",
+      "Sepatu Hiking Waterproof",
+      "Waistbag Tactical TRIVA",
+    ],
+    likes: 524,
+  },
+  {
+    id: "ugc-3",
     climberName: "Rifki Arifin",
     username: "@rifki_arfn",
     mountain: "Gn. Papandayan",
     mountainSlug: "papandayan",
     altitude: "2.665 MDPL",
-    imageUrl: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80",
-    caption: "Misty morning di Hutan Mati Papandayan. Carrier Deuter 60L TRIVA nyaman banget dibawa nanjak berjam-jam!",
-    taggedGear: ["Carrier Deuter 60+10L", "Jacket Mountain Windproof", "Trekking Pole Carbon"],
-    likes: 342,
-  },
-  {
-    id: "ugc-2",
-    climberName: "Nadia Savitri",
-    username: "@nadiasavitri_",
-    mountain: "Gn. Prau",
-    mountainSlug: "prau",
-    altitude: "2.565 MDPL",
-    imageUrl: "https://images.unsplash.com/photo-1510312305653-8ed496efae75?w=800&auto=format&fit=crop&q=80",
-    caption: "Malam berbintang & Milky Way di Bukit Teletubbies Prau. Tenda Pavillo TRIVA hangat & bebas embun rembes ⛺✨",
-    taggedGear: ["Tenda Pavillo 4P Dome", "Lampu Tenda LED TRIVA", "Sleeping Bag Duck Down"],
-    likes: 521,
-  },
-  {
-    id: "ugc-3",
-    climberName: "Bagas Wicaksono",
-    username: "@bagas_wicak",
-    mountain: "Gn. Cikuray",
-    mountainSlug: "cikuray",
-    altitude: "2.821 MDPL",
-    imageUrl: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&auto=format&fit=crop&q=80",
-    caption: "Laut lautan awan di Puncak Cikuray! Sepatu Columbia TRIVA nempel mantap di trek tanjakan tanpa selip.",
-    taggedGear: ["Sepatu Columbia Redmond", "Gaiter Waterproof", "Trekking Pole Carbon"],
-    likes: 418,
+    imageUrl: "/gallery/triva-hutan-mati-papandayan.jpg",
+    caption: "Santai sejenak di Hutan Mati Papandayan. Udara berkabut dan dingin menusuk, outfit all-black & sepatu TRIVA tetap bikin nyaman.",
+    taggedGear: [
+      "Sepatu Hiking Waterproof",
+      "Kacamata Outdoor UV",
+      "Jaket Polar Thermal",
+      "Celana Cargo Trekking",
+    ],
+    likes: 432,
   },
   {
     id: "ugc-4",
-    climberName: "Siti Rahmawati",
-    username: "@sitirahma_mt",
-    mountain: "Gn. Gede",
-    mountainSlug: "gede",
-    altitude: "2.958 MDPL",
-    imageUrl: "https://images.unsplash.com/photo-1470246973918-29a93221c455?w=800&auto=format&fit=crop&q=80",
-    caption: "Sunrise magis di Alun-Alun Surya Kencana. Masak air & sarapan pakai nesting set TRIVA yang super higienis.",
-    taggedGear: ["Tenda Eiger Shira 4P", "Nesting Cooking Set DS-308", "Kompor Ultralight Kovar"],
-    likes: 289,
+    climberName: "Rifki Arifin",
+    username: "@rifki_arfn",
+    mountain: "Gn. Cikuray",
+    mountainSlug: "cikuray",
+    altitude: "2.821 MDPL",
+    imageUrl: "/gallery/triva-sunset-pos2-cikuray.jpg",
+    caption: "Langit senja crimson merah membara di Pos 2 jalur pendakian. Ransel carrier TRIVA dipikul berjam-jam tetap kokoh dan nyaman di punggung.",
+    taggedGear: [
+      "Carrier Deuter 60+10L",
+      "Headlamp LED USB",
+      "Jaket Hardshell Ekspedisi",
+    ],
+    likes: 615,
   },
   {
     id: "ugc-5",
-    climberName: "Arif Hidayat",
-    username: "@arif_outdoors",
+    climberName: "Tim Pendaki TRIVA",
+    username: "@trivaoutdoor",
+    mountain: "Gn. Prau",
+    mountainSlug: "prau",
+    altitude: "2.565 MDPL",
+    imageUrl: "/gallery/triva-trail-raincoat-pos2.jpg",
+    caption: "Hujan di jalur hutan Pos 2 nggak jadi halangan. Jas hujan ponco & flysheet TRIVA lindungi seluruh badan dan ransel tetap kering!",
+    taggedGear: [
+      "Jas Hujan Ponco Bivak TRIVA",
+      "Cover Bag Waterproof",
+      "Sepatu Trail Runner",
+    ],
+    likes: 378,
+  },
+  {
+    id: "ugc-6",
+    climberName: "Nadia & Dimas",
+    username: "@nadiasavitri_",
     mountain: "Gn. Merbabu",
     mountainSlug: "merbabu",
     altitude: "3.142 MDPL",
     imageUrl: "https://images.unsplash.com/photo-1551632811-561732d1e306?w=800&auto=format&fit=crop&q=80",
-    caption: "Savana hijau Merbabu yang bikin candu. Frame tenda alloy dari TRIVA tahan terpaan angin badai malam tadi.",
-    taggedGear: ["Tenda Naturehike Mongar 2P", "Matras Inflatable R-3.5", "Carrier Deuter 65L"],
+    caption: "Savana hijau Merbabu yang bikin candu. Tenda dome double layer dari TRIVA kokoh tahan terpaan angin badai malam tadi.",
+    taggedGear: [
+      "Tenda Naturehike Mongar 2P",
+      "Matras Inflatable R-3.5",
+      "Carrier Deuter 65L",
+    ],
     likes: 375,
-  },
-  {
-    id: "ugc-6",
-    climberName: "Dimas Anggara",
-    username: "@dimas.ang",
-    mountain: "Gn. Putri Lembang",
-    mountainSlug: "putri",
-    altitude: "1.587 MDPL",
-    imageUrl: "https://images.unsplash.com/photo-1517824806704-9040b037703b?w=800&auto=format&fit=crop&q=80",
-    caption: "Family camp ceria. Kursi lipat santai & cangkir kopi outdoor TRIVA bikin akhir pekan bareng anak-anak berkesan.",
-    taggedGear: ["Tenda Quechua Arpenaz 4.2", "Kursi Lipat Naturehike", "Flysheet 4x6m"],
-    likes: 312,
   },
 ];
 
+const STORAGE_KEY = "triva_ugc_photos_v2";
+
 const MOUNTAIN_FILTERS = [
   { label: "Semua Destinasi", slug: "all" },
+  { label: "Gn. Gede", slug: "gede" },
+  { label: "Gn. Sagara", slug: "sagara" },
   { label: "Gn. Papandayan", slug: "papandayan" },
   { label: "Gn. Cikuray", slug: "cikuray" },
   { label: "Gn. Prau", slug: "prau" },
-  { label: "Gn. Gede", slug: "gede" },
   { label: "Gn. Merbabu", slug: "merbabu" },
   { label: "Gn. Putri", slug: "putri" },
 ];
@@ -172,7 +202,7 @@ export default function TestimonialCommunitySection() {
       // 1. Coba baca dari localStorage (sangat cepat)
       if (typeof window !== "undefined") {
         try {
-          const saved = localStorage.getItem("triva_ugc_photos");
+          const saved = localStorage.getItem(STORAGE_KEY);
           if (saved) {
             const parsed = JSON.parse(saved);
             if (Array.isArray(parsed) && parsed.length > 0) {
@@ -188,12 +218,12 @@ export default function TestimonialCommunitySection() {
       // 2. Jika belum ada di localStorage, cek IndexedDB (anti limit kuota)
       if (!loadedPhotos) {
         try {
-          const idbData = await idbGet<UgcPhoto[]>("triva_ugc_photos");
+          const idbData = await idbGet<UgcPhoto[]>(STORAGE_KEY);
           if (idbData && Array.isArray(idbData) && idbData.length > 0) {
             loadedPhotos = idbData;
             if (isMounted) setUgcPhotos(idbData);
             try {
-              localStorage.setItem("triva_ugc_photos", JSON.stringify(idbData));
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(idbData));
             } catch (e) {}
           }
         } catch (err) {
@@ -209,9 +239,9 @@ export default function TestimonialCommunitySection() {
           if (!loadedPhotos) {
             if (isMounted) setUgcPhotos(data.ugcPhotos);
             try {
-              localStorage.setItem("triva_ugc_photos", JSON.stringify(data.ugcPhotos));
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(data.ugcPhotos));
             } catch (e) {}
-            await idbSet("triva_ugc_photos", data.ugcPhotos);
+            await idbSet(STORAGE_KEY, data.ugcPhotos);
           }
         }
       } catch (err) {
@@ -250,10 +280,10 @@ export default function TestimonialCommunitySection() {
 
         if (typeof window !== "undefined") {
           try {
-            localStorage.setItem("triva_ugc_photos", JSON.stringify(updated));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
           } catch (e) {}
         }
-        idbSet("triva_ugc_photos", updated).catch(() => {});
+        idbSet(STORAGE_KEY, updated).catch(() => {});
 
         return updated;
       });
@@ -338,14 +368,14 @@ export default function TestimonialCommunitySection() {
     // 2. Simpan ke localStorage
     if (typeof window !== "undefined") {
       try {
-        localStorage.setItem("triva_ugc_photos", JSON.stringify(updated));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       } catch (e) {
         console.warn("localStorage quota exceeded, disimpan aman di IndexedDB & Server:", e);
       }
     }
 
     // 3. Simpan ke IndexedDB (kapasitas besar dan persisten)
-    await idbSet("triva_ugc_photos", updated);
+    await idbSet(STORAGE_KEY, updated);
 
     // 4. Kirim ke Server API
     try {
@@ -369,10 +399,10 @@ export default function TestimonialCommunitySection() {
       setUgcPhotos(INITIAL_UGC_PHOTOS);
       if (typeof window !== "undefined") {
         try {
-          localStorage.removeItem("triva_ugc_photos");
+          localStorage.removeItem(STORAGE_KEY);
         } catch (e) {}
       }
-      await idbDelete("triva_ugc_photos");
+      await idbDelete(STORAGE_KEY);
       try {
         await fetch("/api/save-custom-items", {
           method: "POST",
