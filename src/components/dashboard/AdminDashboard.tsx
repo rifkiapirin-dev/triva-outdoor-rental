@@ -28,6 +28,7 @@ import {
   Calendar,
   Filter,
   Save,
+  RotateCcw,
 } from "lucide-react";
 import { exportRentalsToExcel } from "@/lib/exportExcel";
 
@@ -39,9 +40,20 @@ export default function AdminDashboard() {
     setShowNewRentalModal,
     updateRentalStatus,
     deleteRental,
+    resetAllRentals,
     settings,
     persistCurrentPhotosToServer,
   } = useApp();
+
+  const handleResetOmset = async () => {
+    if (
+      confirm(
+        "PERHATIAN: Apakah Anda yakin ingin mereset seluruh riwayat transaksi & omset toko menjadi Rp 0?\n\nSemua data sewa uji coba akan dikosongkan dan status alat akan kembali tersedia."
+      )
+    ) {
+      await resetAllRentals();
+    }
+  };
 
   const [search, setSearch] = useState("");
   const [timeFilter, setTimeFilter] = useState<"all" | "today" | "this_month">("all");
@@ -100,6 +112,14 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleResetOmset}
+              className="px-3 py-2.5 bg-rose-950/70 hover:bg-rose-900 border border-rose-500/30 text-rose-200 rounded-xl text-xs font-bold shadow-md active:scale-95 transition-all flex items-center gap-1.5"
+              title="Reset seluruh transaksi dan omset toko menjadi Rp 0"
+            >
+              <RotateCcw className="w-4 h-4 text-rose-400" />
+              <span>Reset Omset &amp; Transaksi</span>
+            </button>
             <button
               onClick={() => persistCurrentPhotosToServer()}
               className="px-3.5 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-600/30 hover:bg-emerald-700 active:scale-95 transition-all flex items-center gap-1.5"

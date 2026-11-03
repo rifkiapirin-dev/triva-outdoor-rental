@@ -140,6 +140,7 @@ interface AppContextType {
     pelunasanData?: { method: PaymentMethod }
   ) => void;
   deleteRental: (id: string) => void;
+  resetAllRentals: () => Promise<void>;
   cart: CartItem[];
   addToCart: (item: GearItem) => void;
   removeFromCart: (itemId: string) => void;
@@ -1619,6 +1620,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
     notify("Transaksi sewa berhasil dihapus", "info");
   };
 
+  const resetAllRentals = async () => {
+    if (currentUser.role !== "admin") {
+      notify("Hanya Admin yang dapat mereset riwayat transaksi & omset!", "error");
+      return;
+    }
+
+    // 1. Kosongkan state transaksi
+    setRentals([]);
+
+    // 2. Hapus data tersimpan di localStorage
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("triva_rentals");
+      } catch (e) {}
+    }
+
+    // 3. Kembalikan semua status unit alat menjadi available
+    setItems((prevItems) => {
+      const resetItems = prevItems.map((item) => ({
+        ...item,
+        status: "available" as const,
+      }));
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("triva_custom_items", JSON.stringify(resetItems));
+        } catch (e) {}
+      }
+      return resetItems;
+    });
+
+    // 4. Hapus data di Supabase jika terhubung
+    try {
+      const isSupabaseConfigured =
+        Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
+        !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("placeholder");
+      if (isSupabaseConfigured) {
+        const supabase = createClient();
+        await (supabase as any)
+          .from("rentals")
+          .delete()
+          .neq("id", "none");
+      }
+    } catch (e) {
+      console.warn("Supabase reset warning:", e);
+    }
+
+    notify("Seluruh transaksi & omset toko berhasil direset ke Rp 0!", "success");
+  };
+
   // Simpan setiap perubahan keranjang sewa ke localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -1704,6 +1754,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addRental,
         updateRentalStatus,
         deleteRental,
+        resetAllRentals,
         cart,
         addToCart,
         removeFromCart,

@@ -13,12 +13,23 @@ import {
   Download,
   Calendar,
   Package,
+  RotateCcw,
 } from "lucide-react";
 import { exportRentalsToExcel } from "@/lib/exportExcel";
 
 export default function ReportsPage() {
-  const { rentals, currentUser } = useApp();
+  const { rentals, currentUser, resetAllRentals } = useApp();
   const [timeFilter, setTimeFilter] = useState<"all" | "today" | "this_month">("all");
+
+  const handleResetOmset = async () => {
+    if (
+      confirm(
+        "PERHATIAN: Apakah Anda yakin ingin mereset seluruh riwayat transaksi & omset toko menjadi Rp 0?\n\nSemua data sewa uji coba akan dikosongkan dan status alat kembali tersedia."
+      )
+    ) {
+      await resetAllRentals();
+    }
+  };
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const currentMonthStr = new Date().toISOString().slice(0, 7);
@@ -210,6 +221,16 @@ export default function ReportsPage() {
               Bulan Ini
             </button>
           </div>
+
+          {/* Reset Omset & Transaksi Button */}
+          <button
+            onClick={handleResetOmset}
+            className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-[11px] font-bold shadow-xs active:scale-95 transition-all flex items-center gap-1.5"
+            title="Reset seluruh transaksi dan omset ke Rp 0"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
+            <span>Reset Omset</span>
+          </button>
 
           {/* Export Excel Button */}
           <button
