@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { useApp } from "@/context/AppContext";
+import { compressImageFile } from "@/lib/imageCompression";
 import {
   X,
   Upload,
@@ -86,7 +87,7 @@ export default function ModalEditImage() {
   // Only Admin can open this modal
   if (!editingTarget || currentUser.role !== "admin") return null;
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -95,13 +96,18 @@ export default function ModalEditImage() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setPreviewUrl(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImageFile(file, 1000, 0.82);
+      setPreviewUrl(compressed);
+    } catch (err) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          setPreviewUrl(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSave = () => {

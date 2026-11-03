@@ -35,6 +35,14 @@ export async function POST(request: Request) {
       );
     }
 
+    if (body.ugcPhotos && Array.isArray(body.ugcPhotos) && body.ugcPhotos.length > 0) {
+      fs.writeFileSync(
+        path.join(dataDir, "custom_ugc_photos.json"),
+        JSON.stringify(body.ugcPhotos, null, 2),
+        "utf8"
+      );
+    }
+
     return NextResponse.json({
       success: true,
       message: "Foto dan data berhasil disimpan permanen ke server file!",
@@ -55,10 +63,12 @@ export async function GET() {
     const itemsPath = path.join(dataDir, "custom_items.json");
     const catsPath = path.join(dataDir, "custom_categories.json");
     const bannerPath = path.join(dataDir, "custom_banner_slides.json");
+    const ugcPath = path.join(dataDir, "custom_ugc_photos.json");
 
     let items = null;
     let categories = null;
     let bannerSlides = null;
+    let ugcPhotos = null;
 
     if (fs.existsSync(itemsPath)) {
       items = JSON.parse(fs.readFileSync(itemsPath, "utf8"));
@@ -72,7 +82,11 @@ export async function GET() {
       bannerSlides = JSON.parse(fs.readFileSync(bannerPath, "utf8"));
     }
 
-    return NextResponse.json({ success: true, items, categories, bannerSlides });
+    if (fs.existsSync(ugcPath)) {
+      ugcPhotos = JSON.parse(fs.readFileSync(ugcPath, "utf8"));
+    }
+
+    return NextResponse.json({ success: true, items, categories, bannerSlides, ugcPhotos });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message },

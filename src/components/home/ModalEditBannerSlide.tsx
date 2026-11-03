@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { useApp } from "@/context/AppContext";
+import { compressImageFile } from "@/lib/imageCompression";
 import {
   X,
   Upload,
@@ -196,7 +197,7 @@ export default function ModalEditBannerSlide({
   // HANYA ROLE ADMIN YANG DIIZINKAN MEMBUKA & MENGUBAH
   if (!isOpen || currentUser?.role !== "admin") return null;
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -205,13 +206,18 @@ export default function ModalEditBannerSlide({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setPreviewUrl(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImageFile(file, 1200, 0.82);
+      setPreviewUrl(compressed);
+    } catch (err) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          setPreviewUrl(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleApplyUrl = () => {

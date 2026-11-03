@@ -1,0 +1,98 @@
+[
+  {
+    "id": "ugc-1",
+    "climberName": "Rifki Arifin",
+    "username": "@rifki_arfn",
+    "mountain": "Gn. Papandayan",
+    "mountainSlug": "papandayan",
+    "altitude": "2.665 MDPL",
+    "imageUrl": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80",
+    "caption": "Misty morning di Hutan Mati Papandayan. Carrier Deuter 60L TRIVA nyaman banget dibawa nanjak berjam-jam!",
+    "taggedGear": [
+      "Carrier Deuter 60+10L",
+      "Jacket Mountain Windproof",
+      "Trekking Pole Carbon"
+    ],
+    "likes": 342
+  },
+  {
+    "id": "ugc-2",
+    "climberName": "Nadia Savitri",
+    "username": "@nadiasavitri_",
+    "mountain": "Gn. Prau",
+    "mountainSlug": "prau",
+    "altitude": "2.565 MDPL",
+    "imageUrl": "https://images.unsplash.com/photo-1510312305653-8ed496efae75?w=800&auto=format&fit=crop&q=80",
+    "caption": "Malam berbintang & Milky Way di Bukit Teletubbies Prau. Tenda Pavillo TRIVA hangat & bebas embun rembes ⛺✨",
+    "taggedGear": [
+      "Tenda Pavillo 4P Dome",
+      "Lampu Tenda LED TRIVA",
+      "Sleeping Bag Duck Down"
+    ],
+    "likes": 521
+  },
+  {
+    "id": "ugc-3",
+    "climberName": "Bagas Wicaksono",
+    "username": "@bagas_wicak",
+    "mountain": "Gn. Cikuray",
+    "mountainSlug": "cikuray",
+    "altitude": "2.821 MDPL",
+    "imageUrl": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&auto=format&fit=crop&q=80",
+    "caption": "Laut lautan awan di Puncak Cikuray! Sepatu Columbia TRIVA nempel mantap di trek tanjakan tanpa selip.",
+    "taggedGear": [
+      "Sepatu Columbia Redmond",
+      "Gaiter Waterproof",
+      "Trekking Pole Carbon"
+    ],
+    "likes": 418
+  },
+  {
+    "id": "ugc-4",
+    "climberName": "Siti Rahmawati",
+    "username": "@sitirahma_mt",
+    "mountain": "Gn. Gede",
+    "mountainSlug": "gede",
+    "altitude": "2.958 MDPL",
+    "imageUrl": "https://images.unsplash.com/photo-1470246973918-29a93221c455?w=800&auto=format&fit=crop&q=80",
+    "caption": "Sunrise magis di Alun-Alun Surya Kencana. Masak air & sarapan pakai nesting set TRIVA yang super higienis.",
+    "taggedGear": [
+      "Tenda Eiger Shira 4P",
+      "Nesting Cooking Set DS-308",
+      "Kompor Ultralight Kovar"
+    ],
+    "likes": 289
+  },
+  {
+    "id": "ugc-5",
+    "climberName": "Arif Hidayat",
+    "username": "@arif_outdoors",
+    "mountain": "Gn. Merbabu",
+    "mountainSlug": "merbabu",
+    "altitude": "3.142 MDPL",
+    "imageUrl": "https://images.unsplash.com/photo-1551632811-561732d1e306?w=800&auto=format&fit=crop&q=80",
+    "caption": "Savana hijau Merbabu yang bikin candu. Frame tenda alloy dari TRIVA tahan terpaan angin badai malam tadi.",
+    "taggedGear": [
+      "Tenda Naturehike Mongar 2P",
+      "Matras Inflatable R-3.5",
+      "Carrier Deuter 65L"
+    ],
+    "likes": 375
+  },
+  {
+    "id": "ugc-6",
+    "climberName": "Dimas Anggara",
+    "username": "@dimas.ang",
+    "mountain": "Gn. Putri Lembang",
+    "mountainSlug": "putri",
+    "altitude": "1.587 MDPL",
+    "imageUrl": "https://images.unsplash.com/photo-1517824806704-9040b037703b?w=800&auto=format&fit=crop&q=80",
+    "caption": "Family camp ceria. Kursi lipat santai & cangkir kopi outdoor TRIVA bikin akhir pekan bareng anak-anak berkesan.",
+    "taggedGear": [
+      "Tenda Quechua Arpenaz 4.2",
+      "Kursi Lipat Naturehike",
+      "Flysheet 4x6m"
+    ],
+    "likes": 312
+  }
+]

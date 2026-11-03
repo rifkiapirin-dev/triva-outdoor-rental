@@ -18,6 +18,12 @@ import {
   Plus,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import {
+  compressImageFile,
+  idbSet,
+  idbGet,
+  idbDelete,
+} from "@/lib/imageCompression";
 
 function InstagramIcon({ className = "w-4 h-4" }: { className?: string }) {
   return (
@@ -153,22 +159,71 @@ export default function TestimonialCommunitySection() {
   const [editMountain, setEditMountain] = useState("");
   const [editAltitude, setEditAltitude] = useState("");
   const [editCaption, setEditCaption] = useState("");
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Load photos from localStorage on client mount
+  // Load photos on client mount: localStorage -> IndexedDB -> Server Disk API
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    let isMounted = true;
+
+    async function loadGalleryData() {
+      let loadedPhotos: UgcPhoto[] | null = null;
+
+      // 1. Coba baca dari localStorage (sangat cepat)
+      if (typeof window !== "undefined") {
+        try {
+          const saved = localStorage.getItem("triva_ugc_photos");
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              loadedPhotos = parsed;
+              if (isMounted) setUgcPhotos(parsed);
+            }
+          }
+        } catch (e) {
+          console.warn("Storage quota / read warning on localStorage:", e);
+        }
+      }
+
+      // 2. Jika belum ada di localStorage, cek IndexedDB (anti limit kuota)
+      if (!loadedPhotos) {
+        try {
+          const idbData = await idbGet<UgcPhoto[]>("triva_ugc_photos");
+          if (idbData && Array.isArray(idbData) && idbData.length > 0) {
+            loadedPhotos = idbData;
+            if (isMounted) setUgcPhotos(idbData);
+            try {
+              localStorage.setItem("triva_ugc_photos", JSON.stringify(idbData));
+            } catch (e) {}
+          }
+        } catch (err) {
+          console.warn("IndexedDB read warning:", err);
+        }
+      }
+
+      // 3. Cek server API (/api/save-custom-items)
       try {
-        const saved = localStorage.getItem("triva_ugc_photos");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setUgcPhotos(parsed);
+        const res = await fetch("/api/save-custom-items");
+        const data = await res.json();
+        if (data && data.ugcPhotos && Array.isArray(data.ugcPhotos) && data.ugcPhotos.length > 0) {
+          if (!loadedPhotos) {
+            if (isMounted) setUgcPhotos(data.ugcPhotos);
+            try {
+              localStorage.setItem("triva_ugc_photos", JSON.stringify(data.ugcPhotos));
+            } catch (e) {}
+            await idbSet("triva_ugc_photos", data.ugcPhotos);
           }
         }
-      } catch (e) {
-        console.error("Gagal membaca galeri dari localStorage:", e);
+      } catch (err) {
+        // network/offline fallback
       }
     }
+
+    loadGalleryData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Filter photos based on mountain selection
@@ -192,11 +247,14 @@ export default function TestimonialCommunitySection() {
           }
           return p;
         });
+
         if (typeof window !== "undefined") {
           try {
             localStorage.setItem("triva_ugc_photos", JSON.stringify(updated));
           } catch (e) {}
         }
+        idbSet("triva_ugc_photos", updated).catch(() => {});
+
         return updated;
       });
 
@@ -224,8 +282,8 @@ export default function TestimonialCommunitySection() {
     setEditCaption(photo.caption);
   };
 
-  // Handle local file upload (base64)
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle local file upload dengan kompresi otomatis (max 1000px, JPEG hemat kuota)
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -234,19 +292,30 @@ export default function TestimonialCommunitySection() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setEditImageUrl(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+    setIsCompressing(true);
+    try {
+      const compressedDataUrl = await compressImageFile(file, 1000, 0.82);
+      setEditImageUrl(compressedDataUrl);
+    } catch (err) {
+      console.warn("Kompresi canvas fallback ke FileReader:", err);
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          setEditImageUrl(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsCompressing(false);
+    }
   };
 
-  // Save changes to state & localStorage
-  const handleSaveGalleryEdit = (e: React.FormEvent) => {
+  // Save changes to state, localStorage, IndexedDB, dan Server API
+  const handleSaveGalleryEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingPhoto) return;
+
+    setIsSaving(true);
 
     const updated = ugcPhotos.map((p) => {
       if (p.id === editingPhoto.id) {
@@ -263,24 +332,54 @@ export default function TestimonialCommunitySection() {
       return p;
     });
 
+    // 1. Simpan ke React State instan
     setUgcPhotos(updated);
+
+    // 2. Simpan ke localStorage
     if (typeof window !== "undefined") {
       try {
         localStorage.setItem("triva_ugc_photos", JSON.stringify(updated));
-      } catch (e) {}
+      } catch (e) {
+        console.warn("localStorage quota exceeded, disimpan aman di IndexedDB & Server:", e);
+      }
     }
 
-    notify(`Foto galeri "${editClimberName || editingPhoto.climberName}" berhasil diperbarui!`, "success");
+    // 3. Simpan ke IndexedDB (kapasitas besar dan persisten)
+    await idbSet("triva_ugc_photos", updated);
+
+    // 4. Kirim ke Server API
+    try {
+      await fetch("/api/save-custom-items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ugcPhotos: updated }),
+      });
+    } catch (err) {
+      console.error("Gagal sinkron ke server file:", err);
+    }
+
+    setIsSaving(false);
+    notify(`Foto galeri "${editClimberName || editingPhoto.climberName}" berhasil disimpan permanen!`, "success");
     setEditingPhoto(null);
   };
 
   // Reset to default photos (Admin only)
-  const handleResetGallery = () => {
+  const handleResetGallery = async () => {
     if (confirm("Kembalikan seluruh foto galeri komunitas ke bawaan awal?")) {
       setUgcPhotos(INITIAL_UGC_PHOTOS);
       if (typeof window !== "undefined") {
-        localStorage.removeItem("triva_ugc_photos");
+        try {
+          localStorage.removeItem("triva_ugc_photos");
+        } catch (e) {}
       }
+      await idbDelete("triva_ugc_photos");
+      try {
+        await fetch("/api/save-custom-items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ugcPhotos: INITIAL_UGC_PHOTOS }),
+        });
+      } catch (err) {}
       notify("Galeri komunitas telah direset ke foto bawaan awal.", "info");
     }
   };
@@ -647,8 +746,14 @@ export default function TestimonialCommunitySection() {
                   type="file"
                   accept="image/png, image/jpeg, image/jpg, image/webp"
                   onChange={handleFileUpload}
-                  className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-triva-crimson file:text-white hover:file:bg-triva-crimson-700 file:cursor-pointer cursor-pointer"
+                  disabled={isCompressing || isSaving}
+                  className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-triva-crimson file:text-white hover:file:bg-triva-crimson-700 file:cursor-pointer cursor-pointer disabled:opacity-50"
                 />
+                {isCompressing && (
+                  <p className="text-[11px] text-amber-600 font-semibold animate-pulse">
+                    ⏳ Sedang mengompresi gambar otomatis agar hemat penyimpanan browser...
+                  </p>
+                )}
 
                 <div className="pt-2 border-t border-slate-200">
                   <label className="text-[10px] font-black uppercase tracking-wider text-slate-700 block mb-1">
@@ -747,10 +852,11 @@ export default function TestimonialCommunitySection() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-triva-crimson hover:bg-triva-crimson-700 text-white font-black text-xs shadow-md shadow-triva-crimson/30 active:scale-95 transition-all flex items-center gap-1.5"
+                  disabled={isCompressing || isSaving}
+                  className="px-5 py-2.5 rounded-xl bg-triva-crimson hover:bg-triva-crimson-700 text-white font-black text-xs shadow-md shadow-triva-crimson/30 active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-50"
                 >
                   <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>Simpan Perubahan Galeri</span>
+                  <span>{isSaving ? "Menyimpan Permanen..." : "Simpan Perubahan Galeri"}</span>
                 </button>
               </div>
             </form>
