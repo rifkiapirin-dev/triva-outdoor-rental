@@ -61,39 +61,78 @@ export default function LoginPage() {
     }
 
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: password,
-      });
+      let loggedIn = false;
 
-      if (!error && data?.user) {
-        // Ambil profil dari Supabase
-        const { data: profile } = await (supabase as any)
-          .from("profiles")
-          .select("*")
-          .eq("id", data.user.id)
-          .single();
+      // 1. Coba login ke Supabase Auth jika online
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password: password,
+        });
 
-        const role = (profile?.role as UserRole) || "customer";
-        const loggedInUser: User = {
-          id: data.user.id,
-          name: profile?.full_name || data.user.email?.split("@")[0] || "User",
-          email: data.user.email || "",
-          phoneWa: profile?.phone_wa || "",
-          role: role,
-        };
-        setCurrentUser(loggedInUser);
-        if (typeof window !== "undefined") {
-          localStorage.setItem("triva_current_user", JSON.stringify(loggedInUser));
+        if (!error && data?.user) {
+          const { data: profile } = await (supabase as any)
+            .from("profiles")
+            .select("*")
+            .eq("id", data.user.id)
+            .single();
+
+          const role = (profile?.role as UserRole) || "customer";
+          const loggedInUser: User = {
+            id: data.user.id,
+            name: profile?.full_name || data.user.email?.split("@")[0] || "User",
+            email: data.user.email || "",
+            phoneWa: profile?.phone_wa || "",
+            role: role,
+          };
+          setCurrentUser(loggedInUser);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("triva_current_user", JSON.stringify(loggedInUser));
+          }
+
+          notify(`Login berhasil! Selamat datang, ${profile?.full_name || data.user.email}`, "success");
+          router.push("/dashboard");
+          return;
         }
-
-        notify(`Login berhasil! Selamat datang, ${profile?.full_name || data.user.email}`, "success");
-        router.push("/dashboard");
-        return;
+      } catch (sbErr) {
+        console.warn("Supabase auth offline/unreachable, beralih ke pengecekan akun lokal:", sbErr);
       }
 
-      // Jika gagal di Supabase, coba fallback demo user
+      // 2. Cek akun yang didaftarkan secara lokal (triva_registered_users)
+      if (typeof window !== "undefined") {
+        try {
+          const existingStr = localStorage.getItem("triva_registered_users");
+          if (existingStr) {
+            const existingUsers = JSON.parse(existingStr);
+            const found = existingUsers.find(
+              (u: any) =>
+                u.email.toLowerCase() === email.trim().toLowerCase() &&
+                u.password === password
+            );
+
+            if (found) {
+              const localUser: User = {
+                id: found.id,
+                name: found.name,
+                email: found.email,
+                phoneWa: found.phoneWa,
+                role: found.role || "customer",
+              };
+              setCurrentUser(localUser);
+              localStorage.setItem("triva_current_user", JSON.stringify(localUser));
+
+              notify(`Login berhasil! Selamat datang kembali, ${found.name}`, "success");
+              router.push("/dashboard");
+              return;
+            }
+          }
+        } catch (storageErr) {
+          console.error("Error reading triva_registered_users:", storageErr);
+        }
+      }
+
+      // 3. Fallback ke akun demo (Rifki Admin, Arifin Staf, Dimas Pendaki)
       const matchedUser = demoUsers.find(
         (u) => u.email.toLowerCase() === email.toLowerCase()
       );
@@ -104,7 +143,7 @@ export default function LoginPage() {
         return;
       }
 
-      setErrorMessage(error?.message || "Email atau password salah.");
+      setErrorMessage("Email atau password yang Anda masukkan tidak sesuai. Silakan periksa kembali.");
     } catch (err: any) {
       console.error("Login exception:", err);
       const matchedUser = demoUsers.find(
@@ -115,7 +154,7 @@ export default function LoginPage() {
         notify(`Login berhasil! Selamat datang, ${matchedUser.name}`, "success");
         router.push("/dashboard");
       } else {
-        setErrorMessage("Gagal menghubungkan ke server login.");
+        setErrorMessage("Email atau password tidak cocok. Silakan coba kembali.");
       }
     } finally {
       setLoading(false);
