@@ -22,7 +22,7 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { switchUser, setCurrentUser, notify } = useApp();
+  const { switchUser, setCurrentUser, notify, isCloudConnected } = useApp();
 
   const [fullName, setFullName] = useState("");
   const [phoneWa, setPhoneWa] = useState("");
@@ -66,39 +66,41 @@ export default function RegisterPage() {
 
       let registeredViaSupabase = false;
 
-      // Coba daftarkan ke Supabase Auth jika koneksi tersedia
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password: password,
-          options: {
-            data: {
-              full_name: fullName.trim(),
-              phone_wa: phoneWa.trim(),
-              role: "customer",
+      // Coba daftarkan ke Supabase Auth jika koneksi cloud tersedia
+      if (isCloudConnected) {
+        try {
+          const supabase = createClient();
+          const { data, error } = await supabase.auth.signUp({
+            email: email.trim(),
+            password: password,
+            options: {
+              data: {
+                full_name: fullName.trim(),
+                phone_wa: phoneWa.trim(),
+                role: "customer",
+              },
             },
-          },
-        });
+          });
 
-        if (!error && data?.user) {
-          newUser.id = data.user.id;
-          registeredViaSupabase = true;
-          try {
-            await (supabase as any).from("profiles").upsert({
-              id: data.user.id,
-              full_name: fullName.trim(),
-              phone_wa: phoneWa.trim(),
-              role: "customer",
-            });
-          } catch (profileErr) {
-            console.warn("Profiles upsert warning:", profileErr);
+          if (!error && data?.user) {
+            newUser.id = data.user.id;
+            registeredViaSupabase = true;
+            try {
+              await (supabase as any).from("profiles").upsert({
+                id: data.user.id,
+                full_name: fullName.trim(),
+                phone_wa: phoneWa.trim(),
+                role: "customer",
+              });
+            } catch (profileErr) {
+              console.warn("Profiles upsert warning:", profileErr);
+            }
+          } else if (error) {
+            console.warn("Supabase Auth notice, fallback ke penyimpanan lokal:", error.message);
           }
-        } else if (error) {
-          console.warn("Supabase Auth notice, fallback ke penyimpanan lokal:", error.message);
+        } catch (connErr) {
+          console.warn("Supabase offline/unreachable, mengaktifkan akun lokal mandiri:", connErr);
         }
-      } catch (connErr) {
-        console.warn("Supabase offline/unreachable, mengaktifkan akun lokal mandiri:", connErr);
       }
 
       // Selalu simpan akun pendaftaran baru ke penyimpanan lokal agar bisa login kapan saja

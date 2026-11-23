@@ -3,8 +3,10 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { Download, X, Share2, PlusSquare, Smartphone, Check } from "lucide-react";
+import { useApp } from "@/context/AppContext";
 
 export default function InstallPwaBanner() {
+  const { cart } = useApp();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isStandalone, setIsStandalone] = useState(false);
   const [isIos, setIsIos] = useState(false);
@@ -76,10 +78,16 @@ export default function InstallPwaBanner() {
     }
   };
 
+  const hasCart = Boolean(cart && cart.length > 0);
+
   return (
     <>
-      {/* Mini Floating Pill Install Prompt on Mobile (di atas bottom nav) */}
-      <div className="fixed bottom-20 left-4 z-40 max-w-[280px] sm:max-w-xs animate-in slide-in-from-bottom-5 duration-300">
+      {/* Mini Floating Pill Install Prompt on Mobile (di atas bottom nav atau floating cart bar) */}
+      <div
+        className={`fixed ${
+          hasCart ? "bottom-40" : "bottom-20"
+        } left-4 sm:bottom-6 z-40 max-w-[280px] sm:max-w-xs animate-in slide-in-from-bottom-5 duration-300 transition-all`}
+      >
         <div className="bg-slate-900/95 backdrop-blur-md text-white px-3 py-2.5 rounded-2xl shadow-2xl border border-slate-700/80 flex items-center gap-2.5">
           <div className="relative w-8 h-8 rounded-xl overflow-hidden bg-triva-crimson shrink-0 flex items-center justify-center p-1 border border-white/20">
             <Image

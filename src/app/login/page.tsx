@@ -23,7 +23,7 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { switchUser, setCurrentUser, notify, demoUsers } = useApp();
+  const { switchUser, setCurrentUser, notify, demoUsers, isCloudConnected } = useApp();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -64,39 +64,41 @@ export default function LoginPage() {
       let loggedIn = false;
 
       // 1. Coba login ke Supabase Auth jika online
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password: password,
-        });
+      if (isCloudConnected) {
+        try {
+          const supabase = createClient();
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password: password,
+          });
 
-        if (!error && data?.user) {
-          const { data: profile } = await (supabase as any)
-            .from("profiles")
-            .select("*")
-            .eq("id", data.user.id)
-            .single();
+          if (!error && data?.user) {
+            const { data: profile } = await (supabase as any)
+              .from("profiles")
+              .select("*")
+              .eq("id", data.user.id)
+              .single();
 
-          const role = (profile?.role as UserRole) || "customer";
-          const loggedInUser: User = {
-            id: data.user.id,
-            name: profile?.full_name || data.user.email?.split("@")[0] || "User",
-            email: data.user.email || "",
-            phoneWa: profile?.phone_wa || "",
-            role: role,
-          };
-          setCurrentUser(loggedInUser);
-          if (typeof window !== "undefined") {
-            localStorage.setItem("triva_current_user", JSON.stringify(loggedInUser));
+            const role = (profile?.role as UserRole) || "customer";
+            const loggedInUser: User = {
+              id: data.user.id,
+              name: profile?.full_name || data.user.email?.split("@")[0] || "User",
+              email: data.user.email || "",
+              phoneWa: profile?.phone_wa || "",
+              role: role,
+            };
+            setCurrentUser(loggedInUser);
+            if (typeof window !== "undefined") {
+              localStorage.setItem("triva_current_user", JSON.stringify(loggedInUser));
+            }
+
+            notify(`Login berhasil! Selamat datang, ${profile?.full_name || data.user.email}`, "success");
+            router.push("/dashboard");
+            return;
           }
-
-          notify(`Login berhasil! Selamat datang, ${profile?.full_name || data.user.email}`, "success");
-          router.push("/dashboard");
-          return;
+        } catch (sbErr) {
+          console.warn("Supabase auth offline/unreachable, beralih ke pengecekan akun lokal:", sbErr);
         }
-      } catch (sbErr) {
-        console.warn("Supabase auth offline/unreachable, beralih ke pengecekan akun lokal:", sbErr);
       }
 
       // 2. Cek akun yang didaftarkan secara lokal (triva_registered_users)

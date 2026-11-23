@@ -17,10 +17,11 @@ function WhatsAppIcon({ className = "w-6 h-6" }: { className?: string }) {
 }
 
 export default function FloatingWhatsAppAdmin() {
-  const { settings, currentUser } = useApp();
+  const { settings, currentUser, cart } = useApp();
   const [isOpen, setIsOpen] = useState(false);
   const [complaintText, setComplaintText] = useState("");
 
+  const hasCart = Boolean(cart && cart.length > 0);
   const storePhone = settings?.storePhoneWa || "6283851284143";
   const cleanPhone = storePhone.replace(/[^0-9]/g, "").replace(/^0/, "62");
 
@@ -40,7 +41,11 @@ export default function FloatingWhatsAppAdmin() {
   };
 
   return (
-    <div className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40 select-none">
+    <div
+      className={`fixed ${
+        hasCart ? "bottom-40 sm:bottom-28" : "bottom-20 sm:bottom-6"
+      } right-4 sm:right-6 z-40 select-none transition-all duration-300`}
+    >
       {/* 1. Popup Mini Chat Box */}
       {isOpen && (
         <div className="absolute bottom-16 right-0 w-[310px] sm:w-[340px] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200 mb-2">
@@ -145,7 +150,7 @@ export default function FloatingWhatsAppAdmin() {
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
-          className={`w-13 h-13 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-white shadow-2xl transition-all duration-300 relative ${
+          className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-white shadow-2xl transition-all duration-300 relative ${
             isOpen
               ? "bg-slate-800 rotate-90 scale-95"
               : "bg-gradient-to-tr from-[#128C7E] via-[#25D366] to-[#25D366] hover:scale-110 active:scale-95 shadow-emerald-600/40 hover:shadow-emerald-600/60"

@@ -5,7 +5,6 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useApp } from "@/context/AppContext";
 import CategoryVisualShelf from "@/components/home/CategoryVisualShelf";
-import ModalEditImage from "@/components/ModalEditImage";
 import {
   Tent,
   Search,
@@ -471,9 +470,6 @@ function CatalogContent() {
           );
         })}
       </div>
-
-      {/* 5. MODAL EDIT GAMBAR MANUAL (KHUSUS ADMIN) */}
-      <ModalEditImage />
     </div>
   );
 }

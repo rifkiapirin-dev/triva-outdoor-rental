@@ -153,6 +153,7 @@ interface AppContextType {
   setPreselectedItem: (item: GearItem | null) => void;
   clearPreselected: () => void;
   checkoutFromCart: (dates?: { startDate: string; endDate: string }) => void;
+  isCloudConnected: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -866,6 +867,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isRentalsLoaded, setIsRentalsLoaded] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
+  const [isCloudConnected, setIsCloudConnected] = useState(false);
+  const isCloudConnectedRef = useRef(false);
+
+  const updateCloudStatus = (status: boolean) => {
+    isCloudConnectedRef.current = status;
+    setIsCloudConnected(status);
+  };
+
   const recentlyCreatedBookingCodes = useRef<Set<string>>(new Set());
 
   const clearPreselected = () => {
@@ -964,108 +973,177 @@ export function AppProvider({ children }: { children: ReactNode }) {
       Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
       !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("placeholder");
 
-    if (!isSupabaseConfigured) return;
-
-    try {
-      const supabase = createClient();
-
-      // 1. Ambil data awal Transaksi Sewa dari Supabase
-      (supabase as any)
-        .from("rentals")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .then(({ data, error }: any) => {
-          if (!error && data && Array.isArray(data) && data.length > 0) {
-            const parsed = data.map(mapRentalFromDb);
-            setRentals(parsed);
-            localStorage.setItem("triva_rentals", JSON.stringify(parsed));
-          }
-        });
-
-      // 2. Ambil data Kategori dari Supabase Cloud
-      (supabase as any)
-        .from("categories")
-        .select("*")
-        .then(({ data: catData, error: catError }: any) => {
-          if (!catError && catData && Array.isArray(catData) && catData.length > 0) {
-            const parsedCats = catData.map(mapCategoryFromDb);
-            setCategories(parsedCats);
-            localStorage.setItem("triva_custom_categories", JSON.stringify(parsedCats));
-          }
-        });
-
-      // 3. Ambil data Master Unit Alat dari Supabase Cloud
-      (supabase as any)
-        .from("items")
-        .select("*")
-        .then(({ data: itemData, error: itemError }: any) => {
-          if (!itemError && itemData && Array.isArray(itemData) && itemData.length > 0) {
-            const parsedItems = itemData.map(mapItemFromDb);
-            setItems(parsedItems);
-            localStorage.setItem("triva_custom_items", JSON.stringify(parsedItems));
-          }
-        });
-
-      // 4. Langganan perubahan real-time (Postgres Changes) multi-tabel
-      const channel = supabase
-        .channel("realtime-triva-channel")
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "rentals" },
-          (payload) => {
-            if (payload.eventType === "INSERT") {
-              const newR = mapRentalFromDb(payload.new);
-              setRentals((prev) => [
-                newR,
-                ...prev.filter(
-                  (r) => r.id !== newR.id && r.bookingCode !== newR.bookingCode
-                ),
-              ]);
-              if (!recentlyCreatedBookingCodes.current.has(newR.bookingCode)) {
-                notify(`🔔 [Realtime] Pesanan baru ${newR.bookingCode} (${newR.customerName}) masuk!`, "info");
-              }
-            } else if (payload.eventType === "UPDATE") {
-              const updatedR = mapRentalFromDb(payload.new);
-              setRentals((prev) => prev.map((r) => (r.id === updatedR.id ? updatedR : r)));
-            } else if (payload.eventType === "DELETE") {
-              const oldId = (payload.old as any)?.id;
-              if (oldId) {
-                setRentals((prev) => prev.filter((r) => r.id !== oldId));
-              }
-            }
-          }
-        )
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "items" },
-          (payload) => {
-            if (payload.eventType === "UPDATE") {
-              const updatedItem = mapItemFromDb(payload.new);
-              setItems((prev) => prev.map((it) => (it.id === updatedItem.id ? updatedItem : it)));
-            } else if (payload.eventType === "INSERT") {
-              const newItem = mapItemFromDb(payload.new);
-              setItems((prev) => [newItem, ...prev.filter((it) => it.id !== newItem.id)]);
-            }
-          }
-        )
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "categories" },
-          (payload) => {
-            if (payload.eventType === "UPDATE") {
-              const updatedCat = mapCategoryFromDb(payload.new);
-              setCategories((prev) => prev.map((c) => (c.id === updatedCat.id ? updatedCat : c)));
-            }
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    } catch (e) {
-      console.error("Supabase Realtime subscription error:", e);
+    if (!isSupabaseConfigured) {
+      updateCloudStatus(false);
+      return;
     }
+
+    let isMounted = true;
+    let channel: any = null;
+    let supabaseClient: any = null;
+
+    const checkReachabilityAndConnect = async () => {
+      // 1. Safe connection probe via server route to avoid ERR_NAME_NOT_RESOLVED browser console errors
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
+        const res = await fetch("/api/cloud-status", {
+          method: "GET",
+          signal: controller.signal,
+        })
+          .then((r) => r.json())
+          .catch(() => null);
+        clearTimeout(timeoutId);
+
+        if (!res || !res.connected) {
+          if (isMounted) updateCloudStatus(false);
+          return;
+        }
+      } catch {
+        if (isMounted) updateCloudStatus(false);
+        return;
+      }
+
+      if (!isMounted) return;
+
+      try {
+        supabaseClient = createClient();
+        if (isMounted) updateCloudStatus(true);
+
+        // 1. Ambil data awal Transaksi Sewa dari Supabase
+        (supabaseClient as any)
+          .from("rentals")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .then(({ data, error }: any) => {
+            if (!error && data && Array.isArray(data) && data.length > 0) {
+              const parsed = data.map(mapRentalFromDb);
+              setRentals(parsed);
+              localStorage.setItem("triva_rentals", JSON.stringify(parsed));
+            }
+          })
+          .catch(() => {});
+
+        // 2. Ambil data Kategori dari Supabase Cloud
+        (supabaseClient as any)
+          .from("categories")
+          .select("*")
+          .then(({ data: catData, error: catError }: any) => {
+            if (!catError && catData && Array.isArray(catData) && catData.length > 0) {
+              const parsedCats = catData.map(mapCategoryFromDb);
+              setCategories(parsedCats);
+              localStorage.setItem("triva_custom_categories", JSON.stringify(parsedCats));
+            }
+          })
+          .catch(() => {});
+
+        // 3. Ambil data Master Unit Alat dari Supabase Cloud
+        (supabaseClient as any)
+          .from("items")
+          .select("*")
+          .then(({ data: itemData, error: itemError }: any) => {
+            if (!itemError && itemData && Array.isArray(itemData) && itemData.length > 0) {
+              const parsedItems = itemData.map(mapItemFromDb);
+              setItems(parsedItems);
+              localStorage.setItem("triva_custom_items", JSON.stringify(parsedItems));
+            }
+          })
+          .catch(() => {});
+
+        // 4. Langganan perubahan real-time (Postgres Changes) multi-tabel
+        channel = supabaseClient
+          .channel("realtime-triva-channel")
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "rentals" },
+            (payload: any) => {
+              if (payload.eventType === "INSERT") {
+                const newR = mapRentalFromDb(payload.new);
+                setRentals((prev) => [
+                  newR,
+                  ...prev.filter(
+                    (r) => r.id !== newR.id && r.bookingCode !== newR.bookingCode
+                  ),
+                ]);
+                if (!recentlyCreatedBookingCodes.current.has(newR.bookingCode)) {
+                  notify(`🔔 [Realtime] Pesanan baru ${newR.bookingCode} (${newR.customerName}) masuk!`, "info");
+                }
+              } else if (payload.eventType === "UPDATE") {
+                const updatedR = mapRentalFromDb(payload.new);
+                setRentals((prev) => prev.map((r) => (r.id === updatedR.id ? updatedR : r)));
+              } else if (payload.eventType === "DELETE") {
+                const oldId = (payload.old as any)?.id;
+                if (oldId) {
+                  setRentals((prev) => prev.filter((r) => r.id !== oldId));
+                }
+              }
+            }
+          )
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "items" },
+            (payload: any) => {
+              if (payload.eventType === "UPDATE") {
+                const updatedItem = mapItemFromDb(payload.new);
+                setItems((prev) => prev.map((it) => (it.id === updatedItem.id ? updatedItem : it)));
+              } else if (payload.eventType === "INSERT") {
+                const newItem = mapItemFromDb(payload.new);
+                setItems((prev) => [newItem, ...prev.filter((it) => it.id !== newItem.id)]);
+              }
+            }
+          )
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "categories" },
+            (payload: any) => {
+              if (payload.eventType === "UPDATE") {
+                const updatedCat = mapCategoryFromDb(payload.new);
+                setCategories((prev) => prev.map((c) => (c.id === updatedCat.id ? updatedCat : c)));
+              }
+            }
+          )
+          .subscribe((status: string) => {
+            if (status === "SUBSCRIBED") {
+              if (isMounted) updateCloudStatus(true);
+            } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+              if (isMounted) updateCloudStatus(false);
+              try {
+                if (supabaseClient && channel) supabaseClient.removeChannel(channel);
+              } catch {}
+            }
+          });
+      } catch (e) {
+        if (isMounted) updateCloudStatus(false);
+      }
+    };
+
+    checkReachabilityAndConnect();
+
+    const handleOnline = () => {
+      checkReachabilityAndConnect();
+    };
+    const handleOffline = () => {
+      if (isMounted) updateCloudStatus(false);
+      if (supabaseClient && channel) {
+        try {
+          supabaseClient.removeChannel(channel);
+        } catch {}
+      }
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      if (supabaseClient && channel) {
+        try {
+          supabaseClient.removeChannel(channel);
+        } catch {}
+      }
+    };
   }, []);
 
   // 1. Sinkronisasi currentUser ke localStorage agar akun yang sedang aktif tidak hilang saat refresh
@@ -1086,53 +1164,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
       Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
       !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("placeholder");
 
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured || !isCloudConnected) return;
 
+    let subscription: any = null;
     try {
       const supabase = createClient();
 
       // Cek sesi aktif di Supabase Auth saat refresh
-      supabase.auth.getSession().then(async ({ data: { session }, error }: any) => {
-        if (!error && session?.user) {
-          try {
-            const { data: profile } = await (supabase as any)
-              .from("profiles")
-              .select("*")
-              .eq("id", session.user.id)
-              .maybeSingle();
+      supabase.auth
+        .getSession()
+        .then(async ({ data: { session }, error }: any) => {
+          if (!error && session?.user) {
+            try {
+              const { data: profile } = await (supabase as any)
+                .from("profiles")
+                .select("*")
+                .eq("id", session.user.id)
+                .maybeSingle();
 
-            const role: UserRole =
-              (profile?.role as UserRole) ||
-              (session.user.user_metadata?.role as UserRole) ||
-              "customer";
+              const role: UserRole =
+                (profile?.role as UserRole) ||
+                (session.user.user_metadata?.role as UserRole) ||
+                "customer";
 
-            const restoredUser: User = {
-              id: session.user.id,
-              name:
-                profile?.full_name ||
-                session.user.user_metadata?.full_name ||
-                session.user.email?.split("@")[0] ||
-                "User",
-              email: session.user.email || "",
-              phoneWa:
-                profile?.phone_wa ||
-                session.user.user_metadata?.phone_wa ||
-                "",
-              role: role,
-            };
+              const restoredUser: User = {
+                id: session.user.id,
+                name:
+                  profile?.full_name ||
+                  session.user.user_metadata?.full_name ||
+                  session.user.email?.split("@")[0] ||
+                  "User",
+                email: session.user.email || "",
+                phoneWa:
+                  profile?.phone_wa ||
+                  session.user.user_metadata?.phone_wa ||
+                  "",
+                role: role,
+              };
 
-            setCurrentUser(restoredUser);
-            localStorage.setItem("triva_current_user", JSON.stringify(restoredUser));
-          } catch (err) {
-            console.error("Error restoring user profile from Supabase:", err);
+              setCurrentUser(restoredUser);
+              localStorage.setItem("triva_current_user", JSON.stringify(restoredUser));
+            } catch (err) {
+              // Silently handle profile fetch error
+            }
           }
-        }
-      });
+        })
+        .catch(() => {});
 
       // Langganan event login/logout Supabase
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange(async (event: string, session: any) => {
+      const authListener = supabase.auth.onAuthStateChange(async (event: string, session: any) => {
         if (
           (event === "SIGNED_IN" ||
             event === "TOKEN_REFRESHED" ||
@@ -1169,7 +1249,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setCurrentUser(loggedInUser);
             localStorage.setItem("triva_current_user", JSON.stringify(loggedInUser));
           } catch (err) {
-            console.error("Error in onAuthStateChange profile fetch:", err);
+            // Silently handle auth state profile fetch error
           }
         } else if (event === "SIGNED_OUT") {
           localStorage.removeItem("triva_current_user");
@@ -1182,14 +1262,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
           });
         }
       });
+      subscription = authListener?.data?.subscription;
 
       return () => {
-        subscription.unsubscribe();
+        if (subscription?.unsubscribe) subscription.unsubscribe();
       };
     } catch (e) {
-      console.error("Supabase Auth session check error:", e);
+      // Supabase Auth session check error handled
     }
-  }, []);
+  }, [isCloudConnected]);
 
   // Simpan setiap perubahan transaksi sewa (tambah, setujui, ubah status) ke localStorage agar tidak hilang saat di-refresh
   useEffect(() => {
@@ -1256,11 +1337,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         } catch (e) {}
       }
 
-      // Sync langsung ke Supabase Cloud
+      // Sync langsung ke Supabase Cloud jika terhubung
       const isSupabaseConfigured =
         Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
         !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("placeholder");
-      if (isSupabaseConfigured) {
+      if (isSupabaseConfigured && isCloudConnectedRef.current) {
         try {
           const supabase = createClient();
           (supabase as any)
@@ -1269,7 +1350,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             .eq("id", itemId)
             .then(({ error }: any) => {
               if (error) console.error("Gagal update foto item di Supabase:", error);
-            });
+            })
+            .catch(() => {});
         } catch (err) {}
       }
 
@@ -1296,11 +1378,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         } catch (e) {}
       }
 
-      // Sync langsung ke Supabase Cloud
+      // Sync langsung ke Supabase Cloud jika terhubung
       const isSupabaseConfigured =
         Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
         !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("placeholder");
-      if (isSupabaseConfigured) {
+      if (isSupabaseConfigured && isCloudConnectedRef.current) {
         try {
           const supabase = createClient();
           (supabase as any)
@@ -1309,7 +1391,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             .or(`id.eq.${categoryId},slug.eq.${categoryId}`)
             .then(({ error }: any) => {
               if (error) console.error("Gagal update foto kategori di Supabase:", error);
-            });
+            })
+            .catch(() => {});
         } catch (err) {}
       }
 
@@ -1408,11 +1491,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         )
       );
 
-      // Sync status unit ke Supabase items
+      // Sync status unit ke Supabase items jika terhubung
       const isSupabaseConfigured =
         Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
         !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("placeholder");
-      if (isSupabaseConfigured) {
+      if (isSupabaseConfigured && isCloudConnectedRef.current) {
         try {
           const supabase = createClient();
           const itemIds = newRental.items.map((ri) => ri.itemId);
@@ -1422,7 +1505,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             .in("id", itemIds)
             .then(({ error }: any) => {
               if (error) console.error("Gagal sync status unit baru ke Supabase items:", error);
-            });
+            })
+            .catch(() => {});
         } catch (err) {}
       }
     }
@@ -1432,14 +1516,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const isSupabaseConfigured =
         Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
         !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("placeholder");
-      if (isSupabaseConfigured) {
+      if (isSupabaseConfigured && isCloudConnectedRef.current) {
         const supabase = createClient();
         (supabase as any)
           .from("rentals")
           .insert(mapRentalToDb(newRental) as any)
           .then(({ error }: any) => {
             if (error) console.error("Gagal simpan rental ke Supabase:", error);
-          });
+          })
+          .catch(() => {});
       }
     } catch (e) {
       console.error("Supabase insert error:", e);
@@ -1517,12 +1602,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       );
     }
 
-    // Sync status unit alat ke Supabase Cloud
+    // Sync status unit alat ke Supabase Cloud jika terhubung
     if (targetRental && (newStatus === "active" || newStatus === "returned" || newStatus === "cancelled")) {
       const isSupabaseConfigured =
         Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
         !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("placeholder");
-      if (isSupabaseConfigured) {
+      if (isSupabaseConfigured && isCloudConnectedRef.current) {
         try {
           const itemIds = targetRental.items.map((ri) => ri.itemId);
           const newItemStatus = newStatus === "active" ? "rented" : "available";
@@ -1533,17 +1618,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
             .in("id", itemIds)
             .then(({ error }: any) => {
               if (error) console.error("Gagal sync status unit ke Supabase items:", error);
-            });
+            })
+            .catch(() => {});
         } catch (err) {}
       }
     }
 
-    // Sync update status ke Supabase
+    // Sync update status ke Supabase jika terhubung
     try {
       const isSupabaseConfigured =
         Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
         !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("placeholder");
-      if (isSupabaseConfigured) {
+      if (isSupabaseConfigured && isCloudConnectedRef.current) {
         const supabase = createClient();
         const updatePayload: any = {
           status: newStatus,
@@ -1569,7 +1655,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           .eq("id", id)
           .then(({ error }: any) => {
             if (error) console.error("Gagal update status di Supabase:", error);
-          });
+          })
+          .catch(() => {});
       }
     } catch (e) {
       console.error("Supabase update status error:", e);
@@ -1598,12 +1685,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     setRentals((prev) => prev.filter((r) => r.id !== id));
 
-    // Sync delete ke Supabase
+    // Sync delete ke Supabase jika terhubung
     try {
       const isSupabaseConfigured =
         Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
         !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("placeholder");
-      if (isSupabaseConfigured) {
+      if (isSupabaseConfigured && isCloudConnectedRef.current) {
         const supabase = createClient();
         (supabase as any)
           .from("rentals")
@@ -1611,7 +1698,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           .eq("id", id)
           .then(({ error }: any) => {
             if (error) console.error("Gagal hapus di Supabase:", error);
-          });
+          })
+          .catch(() => {});
       }
     } catch (e) {
       console.error("Supabase delete error:", e);
@@ -1655,7 +1743,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const isSupabaseConfigured =
         Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
         !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("placeholder");
-      if (isSupabaseConfigured) {
+      if (isSupabaseConfigured && isCloudConnectedRef.current) {
         const supabase = createClient();
         await (supabase as any)
           .from("rentals")
@@ -1767,6 +1855,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setPreselectedItem,
         clearPreselected,
         checkoutFromCart,
+        isCloudConnected,
       }}
     >
       {children}

@@ -28,6 +28,7 @@ export default function Navbar() {
     notification,
     toggleMobileMenu,
     setShowNewRentalModal,
+    isCloudConnected,
   } = useApp();
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
 
@@ -135,13 +136,23 @@ export default function Navbar() {
           {/* Right: Actions & Role Switcher */}
           <div className="flex items-center gap-1.5 sm:gap-3">
             {/* Supabase Live Realtime Cloud Indicator */}
-            <div
-              className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold"
-              title="Database Supabase Cloud Terhubung & Live Realtime"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Supabase Cloud</span>
-            </div>
+            {isCloudConnected ? (
+              <div
+                className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold transition-colors"
+                title="Database Supabase Cloud Terhubung & Live Realtime"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Supabase Cloud</span>
+              </div>
+            ) : (
+              <div
+                className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold transition-colors"
+                title="Mode Lokal (Offline) - Supabase Cloud tidak terjangkau"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                <span>Mode Lokal (Offline)</span>
+              </div>
+            )}
 
             {/* Desktop Quick Button */}
             <button
