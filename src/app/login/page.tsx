@@ -113,12 +113,16 @@ export default function LoginPage() {
       }
 
       // 3. Akun Admin / Owner Resmi
-      if (cleanEmail === "owner@triva.id" || cleanEmail === "admin@triva.id") {
+      if (
+        cleanEmail === "rifkiapirin@gmail.com" ||
+        cleanEmail === "owner@triva.id" ||
+        cleanEmail === "admin@triva.id"
+      ) {
         const adminUser: User = {
-          id: "usr-admin-1",
-          name: "Rifki",
-          email: "owner@triva.id",
-          phoneWa: "083851284143",
+          id: "ba26cb24-4ae9-43ee-95c4-96669be97948",
+          name: "Rifki Arifin (Owner)",
+          email: "rifkiapirin@gmail.com",
+          phoneWa: "081234567890",
           role: "admin",
           avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80",
         };
@@ -126,7 +130,7 @@ export default function LoginPage() {
         if (typeof window !== "undefined") {
           localStorage.setItem("triva_current_user", JSON.stringify(adminUser));
         }
-        notify("Login berhasil! Selamat datang, Rifki (Owner & Pengelola Toko)", "success");
+        notify("Login berhasil! Selamat datang, Rifki Arifin (Owner & Pengelola Toko)", "success");
         router.push("/dashboard");
         return;
       }
@@ -202,7 +206,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="contoh: owner@triva.id atau email pendaki"
+                  placeholder="contoh: rifkiapirin@gmail.com atau email pendaki"
                   className="w-full text-xs pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-triva-crimson transition-colors"
                   required
                 />

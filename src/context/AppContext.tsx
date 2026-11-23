@@ -161,8 +161,8 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const INITIAL_USERS: User[] = [
   {
     id: "usr-admin-1",
-    name: "Rifki",
-    email: "owner@triva.id",
+    name: "Rifki Arifin (Owner)",
+    email: "rifkiapirin@gmail.com",
     phoneWa: "083851284143",
     role: "admin",
     avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80",
