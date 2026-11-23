@@ -9,7 +9,6 @@ import { UserRole } from "@/types";
 import {
   Menu,
   Shield,
-  UserCheck,
   Compass,
   Plus,
   CheckCircle,
@@ -36,19 +35,14 @@ export default function Navbar() {
     switch (role) {
       case "admin":
         return {
-          label: "Owner (Admin)",
+          label: "Admin (Owner)",
           bg: "bg-triva-crimson-50 text-triva-crimson border-triva-crimson-200",
           icon: Shield,
         };
-      case "staff":
-        return {
-          label: "Staf Toko",
-          bg: "bg-amber-50 text-amber-800 border-amber-200",
-          icon: UserCheck,
-        };
       case "customer":
+      default:
         return {
-          label: "Konsumen (Penyewa)",
+          label: "Pendaki",
           bg: "bg-blue-50 text-blue-800 border-blue-200",
           icon: Compass,
         };
@@ -174,7 +168,7 @@ export default function Navbar() {
                   {currentUser.name ? currentUser.name.split(" ")[0] : "Akun"}
                 </span>
                 <span className="text-[8px] sm:text-[9px] px-1 sm:px-1.5 py-0.5 rounded bg-white/80 uppercase font-extrabold">
-                  {currentUser.role}
+                  {badge.label}
                 </span>
                 <ChevronDown className="w-3 h-3 opacity-60" />
               </button>
@@ -201,10 +195,8 @@ export default function Navbar() {
                       </div>
                       <span className="inline-block mt-1.5 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
                         {currentUser.role === "admin"
-                          ? "👑 Owner & Admin"
-                          : currentUser.role === "staff"
-                          ? "👨‍💼 Staf Kasir Toko"
-                          : "⛺ Konsumen / Pendaki"}
+                          ? "👑 Admin (Owner)"
+                          : "⛺ Pendaki"}
                       </span>
                     </div>
                   </div>

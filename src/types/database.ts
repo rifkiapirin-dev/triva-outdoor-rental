@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type UserRole = "admin" | "staff" | "customer";
+export type UserRole = "admin" | "customer";
 export type ItemStatus = "available" | "rented" | "maintenance";
 export type RentalStatus =
   | "pending_dp"

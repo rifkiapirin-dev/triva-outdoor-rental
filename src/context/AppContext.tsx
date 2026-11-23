@@ -105,7 +105,7 @@ interface AppContextType {
   currentUser: User;
   setCurrentUser: (user: User) => void;
   logout: () => Promise<void>;
-  demoUsers: User[];
+  defaultUsers: User[];
   switchUser: (role: UserRole) => void;
   categories: GearCategory[];
   items: GearItem[];
@@ -158,7 +158,7 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const INITIAL_DEMO_USERS: User[] = [
+const INITIAL_USERS: User[] = [
   {
     id: "usr-admin-1",
     name: "Rifki",
@@ -166,14 +166,6 @@ const INITIAL_DEMO_USERS: User[] = [
     phoneWa: "083851284143",
     role: "admin",
     avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80",
-  },
-  {
-    id: "usr-staff-1",
-    name: "Arifin",
-    email: "staff@triva.id",
-    phoneWa: "081298765432",
-    role: "staff",
-    avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80",
   },
   {
     id: "usr-cust-1",
@@ -841,8 +833,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (saved) {
           const parsed = JSON.parse(saved);
           if (parsed && parsed.id && parsed.role) {
+            if (parsed.role === "staff" || parsed.id === "usr-staff-1") {
+              localStorage.setItem("triva_current_user", JSON.stringify(INITIAL_USERS[0]));
+              return INITIAL_USERS[0];
+            }
             if (parsed.role === "admin" && (parsed.phoneWa === "081234567890" || !parsed.phoneWa)) {
               parsed.phoneWa = "083851284143";
+              localStorage.setItem("triva_current_user", JSON.stringify(parsed));
             }
             return parsed;
           }
@@ -851,7 +848,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         console.error("Gagal membaca user dari localStorage:", e);
       }
     }
-    return INITIAL_DEMO_USERS[0];
+    return INITIAL_USERS[0];
   });
   const [categories, setCategories] = useState<GearCategory[]>(INITIAL_CATEGORIES);
   const [items, setItems] = useState<GearItem[]>(INITIAL_ITEMS);
@@ -1182,10 +1179,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 .eq("id", session.user.id)
                 .maybeSingle();
 
-              const role: UserRole =
-                (profile?.role as UserRole) ||
-                (session.user.user_metadata?.role as UserRole) ||
-                "customer";
+              const rawRole = profile?.role || session.user.user_metadata?.role;
+              const role: UserRole = rawRole === "admin" || rawRole === "staff" ? "admin" : "customer";
 
               const restoredUser: User = {
                 id: session.user.id,
@@ -1226,10 +1221,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
               .eq("id", session.user.id)
               .maybeSingle();
 
-            const role: UserRole =
-              (profile?.role as UserRole) ||
-              (session.user.user_metadata?.role as UserRole) ||
-              "customer";
+            const rawRole = profile?.role || session.user.user_metadata?.role;
+            const role: UserRole = rawRole === "admin" || rawRole === "staff" ? "admin" : "customer";
 
             const loggedInUser: User = {
               id: session.user.id,
@@ -1445,7 +1438,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const switchUser = (role: UserRole) => {
-    const target = INITIAL_DEMO_USERS.find((u) => u.role === role) || INITIAL_DEMO_USERS[0];
+    const target = INITIAL_USERS.find((u) => u.role === role) || INITIAL_USERS[0];
     setCurrentUser(target);
     if (typeof window !== "undefined") {
       localStorage.setItem("triva_current_user", JSON.stringify(target));
@@ -1541,8 +1534,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     penaltyNotes = "",
     pelunasanData?: { method: PaymentMethod }
   ) => {
-    // STRICT SECURITY: Hanya Staf Kasir atau Admin yang berhak mengubah status / menyetujui pesanan
-    if (currentUser.role === "customer") {
+    // STRICT SECURITY: Hanya Admin yang berhak mengubah status / menyetujui pesanan
+    if (currentUser.role !== "admin") {
       notify("Akses ditolak: Konsumen tidak dapat menyetujui atau mengubah status sewa sendiri!", "error");
       return;
     }
@@ -1817,7 +1810,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         currentUser,
         setCurrentUser,
         logout,
-        demoUsers: INITIAL_DEMO_USERS,
+        defaultUsers: INITIAL_USERS,
         switchUser,
         categories,
         items,

@@ -160,7 +160,7 @@ export default function ModalReceipt({
             <div className="flex justify-between">
               <span className="text-slate-500">Petugas Kasir:</span>
               <span className="font-bold text-slate-800">
-                {rental.handledByStaffName || "Bambang Wijaya"}
+                {rental.handledByStaffName || "Kasir Utama (Admin)"}
               </span>
             </div>
             <div className="flex justify-between">

@@ -1,9 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useApp } from "@/context/AppContext";
 import HeroBannerCarousel from "@/components/home/HeroBannerCarousel";
 import TestimonialCommunitySection from "@/components/home/TestimonialCommunitySection";
+import ModalHandoverSettlement from "@/components/ModalHandoverSettlement";
+import ModalReceipt from "@/components/ModalReceipt";
+import { PaymentMethod, RentalTransaction } from "@/types";
 import {
   TrendingUp,
   DollarSign,
@@ -29,6 +33,9 @@ import {
   Filter,
   Save,
   RotateCcw,
+  CheckCheck,
+  XCircle,
+  MessageCircle,
 } from "lucide-react";
 import { exportRentalsToExcel } from "@/lib/exportExcel";
 
@@ -45,18 +52,54 @@ export default function AdminDashboard() {
     persistCurrentPhotosToServer,
   } = useApp();
 
+  const [selectedRentalForHandover, setSelectedRentalForHandover] = useState<RentalTransaction | null>(null);
+  const [selectedRentalForReceipt, setSelectedRentalForReceipt] = useState<RentalTransaction | null>(null);
+  const [search, setSearch] = useState("");
+  const [timeFilter, setTimeFilter] = useState<"all" | "today" | "this_month">("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
   const handleResetOmset = async () => {
     if (
       confirm(
-        "PERHATIAN: Apakah Anda yakin ingin mereset seluruh riwayat transaksi & omset toko menjadi Rp 0?\n\nSemua data sewa uji coba akan dikosongkan dan status alat akan kembali tersedia."
+        "PERHATIAN: Apakah Anda yakin ingin mereset seluruh riwayat transaksi & omset toko menjadi Rp 0?\n\nSemua data transaksi sewa akan dikosongkan dan status unit alat akan kembali tersedia."
       )
     ) {
       await resetAllRentals();
     }
   };
 
-  const [search, setSearch] = useState("");
-  const [timeFilter, setTimeFilter] = useState<"all" | "today" | "this_month">("all");
+  const handleConfirmHandoverSettlement = (rentalId: string, pelunasanMethod: PaymentMethod) => {
+    updateRentalStatus(rentalId, "active", 0, "", { method: pelunasanMethod });
+  };
+
+  const handleProcessReturn = (r: RentalTransaction) => {
+    const penaltyInput = prompt(
+      `Pemeriksaan Pengembalian Alat untuk ${r.customerName} (${r.bookingCode}):\n\nMasukkan nominal denda/ganti rugi jika ada keterlambatan atau kerusakan (Isi 0 jika barang lengkap & aman):`,
+      "0"
+    );
+    if (penaltyInput === null) return;
+    const penaltyNum = parseInt(penaltyInput) || 0;
+    let penaltyNotes = "";
+    if (penaltyNum > 0) {
+      penaltyNotes =
+        prompt("Catatan denda (misal: Terlambat 1 hari / pasak tenda hilang):", "") ||
+        "Denda keterlambatan / kerusakan";
+    }
+    updateRentalStatus(r.id, "returned", penaltyNum, penaltyNotes);
+  };
+
+  const handleSendWaReminder = (r: RentalTransaction) => {
+    const text = encodeURIComponent(
+      `*TRIVA OUTDOOR - KONFIRMASI TRANSAKSI*\n\n` +
+      `Halo Kak *${r.customerName}*,\n` +
+      `Konfirmasi terkait pesanan #${r.bookingCode} (${r.items.map((i) => i.name).join(", ")}).\n` +
+      `Status: ${r.status.toUpperCase()}\n` +
+      `Sisa Pelunasan: Rp ${r.remainingAmount.toLocaleString("id-ID")}\n` +
+      `Jaminan Fisik: ${r.idCardType} Asli di toko.\n\n` +
+      `Alamat Toko: ${settings.storeAddress}`
+    );
+    window.open(`https://wa.me/${r.customerPhone.replace(/^0/, "62")}?text=${text}`, "_blank");
+  };
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const currentMonthStr = new Date().toISOString().slice(0, 7);
@@ -77,11 +120,18 @@ export default function AdminDashboard() {
   const overdueCount = rentals.filter((r) => r.status === "active" && r.endDate < new Date().toISOString().slice(0, 10)).length;
   const ktpHeldCount = rentals.filter((r) => r.status === "active" || r.status === "confirmed").length;
 
-  const filteredRentals = timeFilteredRentals.filter(
-    (r) =>
-      r.customerName.toLowerCase().includes(search.toLowerCase()) ||
-      r.bookingCode.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredRentals = timeFilteredRentals.filter((r) => {
+    if (statusFilter !== "all" && r.status !== statusFilter) return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      return (
+        r.customerName.toLowerCase().includes(q) ||
+        r.bookingCode.toLowerCase().includes(q) ||
+        r.customerPhone.includes(q)
+      );
+    }
+    return true;
+  });
 
   const handleExport = () => {
     let label = "Semua_Transaksi";
@@ -101,17 +151,25 @@ export default function AdminDashboard() {
           <div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-triva-crimson/30 border border-triva-crimson/50 text-rose-300 text-[10px] font-bold tracking-wider uppercase">
               <Shield className="w-3.5 h-3.5 text-triva-crimson" />
-              Pusat Kendali Owner & Keuangan
+              Pusat Kendali Owner &amp; Operasional Kasir
             </div>
             <h1 className="text-xl font-extrabold mt-2 tracking-tight">
               Dashboard Eksekutif TRIVA
             </h1>
             <p className="text-xs text-slate-400 mt-0.5">
-              Pantau arus kas, performa rental akhir pekan, utilisasi inventaris, dan kepatuhan staf.
+              Pantau arus kas toko, serah-terima alat &amp; pelunasan kasir, jaminan KTP fisik, dan utilisasi stok.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/dashboard/reports"
+              className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-xs font-bold shadow-md active:scale-95 transition-all flex items-center gap-1.5"
+              title="Lihat Laporan Lengkap Omset & CRM Pelanggan"
+            >
+              <FileText className="w-4 h-4 text-slate-300" />
+              <span>Laporan &amp; CRM</span>
+            </Link>
             <button
               onClick={handleResetOmset}
               className="px-3 py-2.5 bg-rose-950/70 hover:bg-rose-900 border border-rose-500/30 text-rose-200 rounded-xl text-xs font-bold shadow-md active:scale-95 transition-all flex items-center gap-1.5"
@@ -133,7 +191,7 @@ export default function AdminDashboard() {
               className="px-4 py-2.5 bg-triva-crimson text-white rounded-xl text-xs font-bold shadow-lg shadow-triva-crimson/30 hover:bg-triva-crimson-700 active:scale-95 transition-all flex items-center gap-1.5"
             >
               <PlusCircle className="w-4 h-4" />
-              <span>Input Sewa Manual</span>
+              <span>+ Buat Reservasi Sewa</span>
             </button>
           </div>
         </div>
@@ -545,81 +603,146 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Left Column: Master Transaksi & Keamanan (2 cols) */}
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <Receipt className="w-4 h-4 text-triva-crimson" />
-                <h2 className="text-sm font-bold text-slate-900">
-                  Semua Transaksi &amp; Riwayat Kas
-                </h2>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                  {filteredRentals.length} Order
-                </span>
+          <div className="p-4 border-b border-slate-100 space-y-3">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Receipt className="w-4 h-4 text-triva-crimson" />
+                  <h2 className="text-sm font-bold text-slate-900">
+                    Operasional Kasir &amp; Transaksi Sewa
+                  </h2>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                    {filteredRentals.length} Order
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Audit transaksi, verifikasi DP, serah-terima alat di kasir, dan pengembalian unit.
+                </p>
               </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Audit transaksi sewa, jaminan KTP, dan rekapitulasi laporan.
-              </p>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Filter Waktu Cepat */}
+                <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl text-[11px] font-bold">
+                  <button
+                    onClick={() => setTimeFilter("all")}
+                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                      timeFilter === "all" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    Semua
+                  </button>
+                  <button
+                    onClick={() => setTimeFilter("today")}
+                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                      timeFilter === "today" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    Hari Ini
+                  </button>
+                  <button
+                    onClick={() => setTimeFilter("this_month")}
+                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                      timeFilter === "this_month" ? "bg-blue-600 text-white shadow-xs" : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    Bulan Ini
+                  </button>
+                </div>
+
+                {/* Tombol Export Excel */}
+                <button
+                  onClick={handleExport}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-bold shadow-xs active:scale-95 transition-all flex items-center gap-1.5"
+                  title="Unduh Laporan ke Excel (.csv)"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Export Excel</span>
+                </button>
+
+                <div className="relative w-full sm:w-44">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Cari transaksi..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full text-xs pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 focus:outline-none focus:border-triva-crimson"
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Filter Waktu Cepat */}
-              <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl text-[11px] font-bold">
-                <button
-                  onClick={() => setTimeFilter("all")}
-                  className={`px-2.5 py-1 rounded-lg transition-all ${
-                    timeFilter === "all" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  Semua
-                </button>
-                <button
-                  onClick={() => setTimeFilter("today")}
-                  className={`px-2.5 py-1 rounded-lg transition-all ${
-                    timeFilter === "today" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  Hari Ini
-                </button>
-                <button
-                  onClick={() => setTimeFilter("this_month")}
-                  className={`px-2.5 py-1 rounded-lg transition-all ${
-                    timeFilter === "this_month" ? "bg-blue-600 text-white shadow-xs" : "text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  Bulan Ini
-                </button>
-              </div>
-
-              {/* Tombol Export Excel */}
+            {/* Operational Status Filters */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 text-xs font-bold pt-1 border-t border-slate-100">
               <button
-                onClick={handleExport}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-bold shadow-xs active:scale-95 transition-all flex items-center gap-1.5"
-                title="Unduh Laporan ke Excel (.csv)"
+                onClick={() => setStatusFilter("all")}
+                className={`px-2.5 py-1 rounded-lg transition-all shrink-0 ${
+                  statusFilter === "all"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
               >
-                <Download className="w-3.5 h-3.5" />
-                <span>Export Excel</span>
+                Semua ({timeFilteredRentals.length})
               </button>
-
-              <div className="relative w-full sm:w-44">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Cari transaksi..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full text-xs pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 focus:outline-none focus:border-triva-crimson"
-                />
-              </div>
+              <button
+                onClick={() => setStatusFilter("pending_dp")}
+                className={`px-2.5 py-1 rounded-lg transition-all shrink-0 flex items-center gap-1.5 ${
+                  statusFilter === "pending_dp"
+                    ? "bg-amber-500 text-white shadow-xs"
+                    : "bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                <span>
+                  Menunggu DP ({timeFilteredRentals.filter((r) => r.status === "pending_dp").length})
+                </span>
+              </button>
+              <button
+                onClick={() => setStatusFilter("confirmed")}
+                className={`px-2.5 py-1 rounded-lg transition-all shrink-0 flex items-center gap-1.5 ${
+                  statusFilter === "confirmed"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "bg-blue-50 text-blue-900 hover:bg-blue-100 border border-blue-200"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-blue-400" />
+                <span>
+                  Siap Ambil ({timeFilteredRentals.filter((r) => r.status === "confirmed").length})
+                </span>
+              </button>
+              <button
+                onClick={() => setStatusFilter("active")}
+                className={`px-2.5 py-1 rounded-lg transition-all shrink-0 flex items-center gap-1.5 ${
+                  statusFilter === "active"
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "bg-emerald-50 text-emerald-900 hover:bg-emerald-100 border border-emerald-200"
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span>
+                  Sedang Disewa ({timeFilteredRentals.filter((r) => r.status === "active").length})
+                </span>
+              </button>
+              <button
+                onClick={() => setStatusFilter("returned")}
+                className={`px-2.5 py-1 rounded-lg transition-all shrink-0 flex items-center gap-1.5 ${
+                  statusFilter === "returned"
+                    ? "bg-emerald-700 text-white shadow-xs"
+                    : "bg-emerald-50 text-emerald-900 hover:bg-emerald-100 border border-emerald-200"
+                }`}
+              >
+                <span>✓ Selesai ({timeFilteredRentals.filter((r) => r.status === "returned").length})</span>
+              </button>
             </div>
           </div>
 
-          <div className="divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
+          <div className="divide-y divide-slate-100 max-h-[440px] overflow-y-auto">
             {filteredRentals.length === 0 ? (
               <div className="p-10 text-center text-xs text-slate-400 space-y-2">
                 <Receipt className="w-8 h-8 text-slate-300 mx-auto" />
-                <p className="font-bold text-slate-700">Belum ada transaksi sewa</p>
+                <p className="font-bold text-slate-700">Belum ada transaksi sewa aktif</p>
                 <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
-                  Seluruh data demo telah direset dan dimulai dari 0. Klik tombol <strong>&quot;+ Input Sewa Manual&quot;</strong> atau lakukan pemesanan baru.
+                  Belum ada transaksi sewa aktif. Klik <strong>&quot;+ Buat Reservasi Sewa&quot;</strong> untuk memulai pencatatan pesanan baru.
                 </p>
               </div>
             ) : (
@@ -649,7 +772,7 @@ export default function AdminDashboard() {
                     </span>
                     {r.handledByStaffName && (
                       <span className="text-[9px] text-slate-400 font-semibold">
-                        &bull; Staf: {r.handledByStaffName}
+                        &bull; Kasir: {r.handledByStaffName}
                       </span>
                     )}
                   </div>
@@ -669,42 +792,96 @@ export default function AdminDashboard() {
                     DP: Rp {r.downPayment.toLocaleString("id-ID")} &bull; Sisa: Rp {r.remainingAmount.toLocaleString("id-ID")}
                   </div>
 
-                  {/* APPROVAL BUTTON DIRECTLY IN ADMIN IF pending_dp */}
-                  {r.status === "pending_dp" && (
-                    <div className="pt-1 flex items-center justify-end gap-1.5">
-                      <button
-                        onClick={() => {
-                          if (confirm(`Setujui pesanan ${r.bookingCode} atas nama ${r.customerName}?\n\nPastikan DP sebesar Rp ${r.downPayment.toLocaleString("id-ID")} telah masuk.`)) {
-                            updateRentalStatus(r.id, "confirmed");
-                          }
-                        }}
-                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black active:scale-95 transition-all shadow-xs"
-                      >
-                        ✓ Setujui DP
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm(`Tolak pesanan ${r.bookingCode}?`)) {
-                            updateRentalStatus(r.id, "cancelled");
-                          }
-                        }}
-                        className="px-2 py-1 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 rounded-lg text-[10px] font-bold active:scale-95 transition-all"
-                      >
-                        ✕ Tolak
-                      </button>
-                    </div>
-                  )}
+                  {/* Action Buttons: Operational Handover & Return for Admin */}
+                  <div className="pt-1.5 flex items-center justify-end gap-1.5 flex-wrap">
+                    {/* APPROVAL FOR PENDING DP */}
+                    {r.status === "pending_dp" && (
+                      <>
+                        <button
+                          onClick={() => {
+                            if (
+                              confirm(
+                                `Setujui pesanan ${r.bookingCode} atas nama ${r.customerName}?\n\nPastikan DP sebesar Rp ${r.downPayment.toLocaleString("id-ID")} (${r.paymentMethod.toUpperCase()}) telah masuk ke mutasi toko.`
+                              )
+                            ) {
+                              updateRentalStatus(r.id, "confirmed");
+                            }
+                          }}
+                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black active:scale-95 transition-all shadow-xs flex items-center gap-1"
+                        >
+                          <CheckCheck className="w-3 h-3" />
+                          <span>Setujui DP</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Tolak / batalkan pesanan ${r.bookingCode}?`)) {
+                              updateRentalStatus(r.id, "cancelled");
+                            }
+                          }}
+                          className="px-2 py-1 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 rounded-lg text-[10px] font-bold active:scale-95 transition-all flex items-center gap-1"
+                        >
+                          <XCircle className="w-3 h-3" />
+                          <span>Tolak</span>
+                        </button>
+                      </>
+                    )}
 
-                  <div>
+                    {/* HANDOVER SETTLEMENT (confirmed -> active) */}
+                    {r.status === "confirmed" && (
+                      <button
+                        onClick={() => setSelectedRentalForHandover(r)}
+                        className="px-2.5 py-1 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-lg text-[10px] font-black active:scale-95 transition-all shadow-xs flex items-center gap-1"
+                        title="Verifikasi KTP fisik asli di brankas & terima sisa pelunasan di kasir"
+                      >
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Serahkan Alat &amp; Pelunasan</span>
+                      </button>
+                    )}
+
+                    {/* RETURN INSPECTION (active -> returned) */}
+                    {r.status === "active" && (
+                      <button
+                        onClick={() => handleProcessReturn(r)}
+                        className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-black active:scale-95 transition-all shadow-xs flex items-center gap-1"
+                        title="Periksa kondisi fisik unit, catat denda jika ada, dan serahkan KTP jaminan"
+                      >
+                        <ShieldCheck className="w-3 h-3" />
+                        <span>Cek Kembali &amp; Lepas KTP</span>
+                      </button>
+                    )}
+
+                    {/* RECEIPT NOTA BUTTON */}
+                    <button
+                      onClick={() => setSelectedRentalForReceipt(r)}
+                      className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold active:scale-95 transition-all flex items-center gap-1"
+                      title="Lihat / Cetak Struk Nota"
+                    >
+                      <Receipt className="w-3 h-3 text-slate-500" />
+                      <span>Nota</span>
+                    </button>
+
+                    {/* WHATSAPP REMINDER */}
+                    <button
+                      onClick={() => handleSendWaReminder(r)}
+                      className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-[10px] font-bold active:scale-95 transition-all flex items-center gap-1"
+                      title="Hubungi penyewa via WhatsApp"
+                    >
+                      <MessageCircle className="w-3 h-3 text-emerald-600" />
+                      <span>WA</span>
+                    </button>
+
+                    {/* DELETE BUTTON */}
                     <button
                       onClick={() => {
                         if (confirm("Hapus transaksi ini secara permanen dari sistem?")) {
                           deleteRental(r.id);
                         }
                       }}
-                      className="mt-0.5 text-[10px] font-bold text-rose-600 hover:text-rose-800 inline-flex items-center gap-1"
+                      className="px-2 py-1 text-[10px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg inline-flex items-center gap-1 transition-colors"
+                      title="Hapus data transaksi"
                     >
-                      <Trash2 className="w-3 h-3" /> Hapus
+                      <Trash2 className="w-3 h-3" />
+                      <span>Hapus</span>
                     </button>
                   </div>
                 </div>
@@ -769,6 +946,23 @@ export default function AdminDashboard() {
 
       {/* Testimoni & Galeri Komunitas Pendaki TRIVA */}
       <TestimonialCommunitySection />
+
+      {/* Modal Serah Terima Alat & Pelunasan Kasir */}
+      {selectedRentalForHandover && (
+        <ModalHandoverSettlement
+          rental={selectedRentalForHandover}
+          onClose={() => setSelectedRentalForHandover(null)}
+          onConfirm={handleConfirmHandoverSettlement}
+        />
+      )}
+
+      {/* Modal Cetak Kwitansi / Struk Nota */}
+      {selectedRentalForReceipt && (
+        <ModalReceipt
+          rental={selectedRentalForReceipt}
+          onClose={() => setSelectedRentalForReceipt(null)}
+        />
+      )}
     </div>
   );
 }

@@ -22,7 +22,7 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { switchUser, setCurrentUser, notify, isCloudConnected } = useApp();
+  const { setCurrentUser, notify, isCloudConnected } = useApp();
 
   const [fullName, setFullName] = useState("");
   const [phoneWa, setPhoneWa] = useState("");

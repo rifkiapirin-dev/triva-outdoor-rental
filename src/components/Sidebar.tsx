@@ -111,9 +111,8 @@ function SidebarContent() {
             <div className="text-xs font-bold text-slate-800 truncate">{currentUser.name}</div>
             <div className="text-[10px] text-slate-400 uppercase font-semibold flex items-center gap-1">
               {currentUser.role === "admin" && <Shield className="w-3 h-3 text-triva-crimson" />}
-              {currentUser.role === "staff" && <UserCheck className="w-3 h-3 text-amber-600" />}
               {currentUser.role === "customer" && <Compass className="w-3 h-3 text-blue-600" />}
-              <span>{currentUser.role}</span>
+              <span>{currentUser.role === "admin" ? "Admin (Owner)" : "Pendaki"}</span>
             </div>
           </div>
         </div>

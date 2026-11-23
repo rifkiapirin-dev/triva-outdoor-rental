@@ -87,7 +87,7 @@ function RentalsContent() {
     }
   };
 
-  const isAdminOrStaff = currentUser.role === "admin" || currentUser.role === "staff";
+  const isAdmin = currentUser.role === "admin";
   const todayStr = new Date().toISOString().slice(0, 10);
   const currentMonthStr = new Date().toISOString().slice(0, 7);
 
@@ -186,7 +186,7 @@ function RentalsContent() {
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-triva-crimson text-[10px] font-black tracking-wider uppercase mb-1">
             <Receipt className="w-3.5 h-3.5" />
             <span>
-              {isAdminOrStaff
+              {isAdmin
                 ? activeView === "active"
                   ? "Meja Kasir & Sewa Aktif"
                   : "Arsip Transaksi Lampau"
@@ -197,7 +197,7 @@ function RentalsContent() {
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             {activeView === "active"
-              ? isAdminOrStaff
+              ? isAdmin
                 ? "Kasir & Sewa Berjalan"
                 : "Sewa Saya (Aktif)"
               : "Riwayat Transaksi"}
@@ -210,7 +210,7 @@ function RentalsContent() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {activeView === "history" && isAdminOrStaff && (
+          {activeView === "history" && isAdmin && (
             <button
               onClick={handleExport}
               className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-950/20 active:scale-95 transition-all flex items-center gap-1.5"
@@ -243,7 +243,7 @@ function RentalsContent() {
           }`}
         >
           <Compass className="w-4 h-4" />
-          <span>{isAdminOrStaff ? "Sewa Berjalan" : "Sewa Saya"}</span>
+          <span>{isAdmin ? "Sewa Berjalan" : "Sewa Saya"}</span>
           <span
             className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
               activeView === "active"
@@ -516,7 +516,7 @@ function RentalsContent() {
                       {/* Staff Approver Pill */}
                       {r.handledByStaffName && (
                         <span className="text-[11px] font-semibold text-slate-300 bg-white/5 border border-white/10 px-2.5 py-1 rounded-xl flex items-center gap-1">
-                          <span>👨‍💼 Staf:</span>
+                          <span>👨‍💼 Petugas:</span>
                           <strong className="text-white font-bold">{r.handledByStaffName}</strong>
                         </span>
                       )}
@@ -746,7 +746,7 @@ function RentalsContent() {
                   </div>
 
                   {/* ACTION BUTTONS UNTUK STAF/KASIR PADA SEWA AKTIF */}
-                  {isAdminOrStaff && activeView === "active" && (
+                  {isAdmin && activeView === "active" && (
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {/* Step 1: Approval for pending_dp */}
                       {r.status === "pending_dp" && (

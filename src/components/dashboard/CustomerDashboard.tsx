@@ -89,7 +89,7 @@ export default function CustomerDashboard() {
               <span>{activeRental.bookingCode}</span>
               {activeRental.handledByStaffName && (
                 <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                  Diverifikasi Staf: {activeRental.handledByStaffName}
+                  Diverifikasi Kasir: {activeRental.handledByStaffName}
                 </span>
               )}
             </div>
@@ -160,7 +160,7 @@ export default function CustomerDashboard() {
             </div>
 
             <div className="mt-2.5 pt-2 border-t border-slate-200/60 text-center text-[10px] text-slate-500">
-              🔒 <em>Persetujuan serah-terima alat &amp; pemeriksaan fisik kembali dilakukan langsung oleh staf di kasir toko TRIVA.</em>
+              🔒 <em>Persetujuan serah-terima alat &amp; pemeriksaan fisik kembali dilakukan langsung oleh petugas di kasir toko TRIVA.</em>
             </div>
           </div>
 
@@ -170,10 +170,10 @@ export default function CustomerDashboard() {
               <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 animate-spin" />
               <div className="text-xs space-y-1">
                 <span className="font-extrabold block">
-                  Pembayaran DP Berhasil Dikirim &bull; Menunggu Verifikasi Staf Kasir
+                  Pembayaran DP Berhasil Dikirim &bull; Menunggu Verifikasi Kasir Toko
                 </span>
                 <p className="text-[11px] text-amber-800 leading-relaxed">
-                  Staf kasir TRIVA sedang mencocokkan mutasi rekening/QRIS toko. Begitu disetujui, tiket ini otomatis berubah status menjadi <strong>Siap Diambil di Toko</strong> dan perlengkapan Anda langsung disiapkan di rak pengambilan.
+                  Pengelola kasir TRIVA sedang mencocokkan mutasi rekening/QRIS toko. Begitu disetujui, tiket ini otomatis berubah status menjadi <strong>Siap Diambil di Toko</strong> dan perlengkapan Anda langsung disiapkan di rak pengambilan.
                 </p>
               </div>
             </div>
@@ -204,7 +204,7 @@ export default function CustomerDashboard() {
                   </span>
                 </span>
                 <p className="text-[11px] text-emerald-800 leading-relaxed">
-                  Alat telah diserahterimakan di toko. Harap jaga kebersihan dan keutuhan seluruh unit. Kembalikan ke toko TRIVA sebelum <strong>{activeRental.endDate} maks pukul {settings.returnDeadlineHour} WIB</strong> agar tidak terkena denda. Staf toko akan melakukan cek fisik sebelum mengembalikan {activeRental.idCardType} fisik asli Anda.
+                  Alat telah diserahterimakan di toko. Harap jaga kebersihan dan keutuhan seluruh unit. Kembalikan ke toko TRIVA sebelum <strong>{activeRental.endDate} maks pukul {settings.returnDeadlineHour} WIB</strong> agar tidak terkena denda. Petugas kasir toko akan melakukan cek fisik sebelum mengembalikan {activeRental.idCardType} fisik asli Anda.
                 </p>
               </div>
             </div>

@@ -7,12 +7,7 @@ import { useRouter } from "next/navigation";
 import {
   Lock,
   Mail,
-  Shield,
-  UserCheck,
-  Compass,
   ArrowRight,
-  Sparkles,
-  CheckCircle2,
   AlertCircle,
   Eye,
   EyeOff,
@@ -23,31 +18,13 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { switchUser, setCurrentUser, notify, demoUsers, isCloudConnected } = useApp();
+  const { setCurrentUser, notify, isCloudConnected } = useApp();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // Quick 1-Click Login for Demo/Evaluation
-  const handleQuickLogin = (role: UserRole) => {
-    setLoading(true);
-    setErrorMessage(null);
-
-    const user = demoUsers.find((u) => u.role === role);
-    if (user) {
-      setEmail(user.email);
-      setPassword("Password123!");
-      switchUser(role);
-
-      setTimeout(() => {
-        notify(`Selamat datang, ${user.name}! Masuk sebagai ${role.toUpperCase()}`, "success");
-        router.push("/dashboard");
-      }, 500);
-    }
-  };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,14 +38,14 @@ export default function LoginPage() {
     }
 
     try {
-      let loggedIn = false;
+      const cleanEmail = email.trim().toLowerCase();
 
       // 1. Coba login ke Supabase Auth jika online
       if (isCloudConnected) {
         try {
           const supabase = createClient();
           const { data, error } = await supabase.auth.signInWithPassword({
-            email: email.trim(),
+            email: cleanEmail,
             password: password,
           });
 
@@ -79,7 +56,8 @@ export default function LoginPage() {
               .eq("id", data.user.id)
               .single();
 
-            const role = (profile?.role as UserRole) || "customer";
+            const rawRole = profile?.role || data.user.user_metadata?.role;
+            const role: UserRole = rawRole === "admin" || rawRole === "staff" ? "admin" : "customer";
             const loggedInUser: User = {
               id: data.user.id,
               name: profile?.full_name || data.user.email?.split("@")[0] || "User",
@@ -92,12 +70,12 @@ export default function LoginPage() {
               localStorage.setItem("triva_current_user", JSON.stringify(loggedInUser));
             }
 
-            notify(`Login berhasil! Selamat datang, ${profile?.full_name || data.user.email}`, "success");
+            notify(`Login berhasil! Selamat datang, ${loggedInUser.name}`, "success");
             router.push("/dashboard");
             return;
           }
         } catch (sbErr) {
-          console.warn("Supabase auth offline/unreachable, beralih ke pengecekan akun lokal:", sbErr);
+          console.warn("Supabase auth offline/unreachable, beralih ke verifikasi akun lokal:", sbErr);
         }
       }
 
@@ -109,7 +87,7 @@ export default function LoginPage() {
             const existingUsers = JSON.parse(existingStr);
             const found = existingUsers.find(
               (u: any) =>
-                u.email.toLowerCase() === email.trim().toLowerCase() &&
+                u.email.toLowerCase() === cleanEmail &&
                 u.password === password
             );
 
@@ -119,7 +97,7 @@ export default function LoginPage() {
                 name: found.name,
                 email: found.email,
                 phoneWa: found.phoneWa,
-                role: found.role || "customer",
+                role: (found.role === "admin" ? "admin" : "customer") as UserRole,
               };
               setCurrentUser(localUser);
               localStorage.setItem("triva_current_user", JSON.stringify(localUser));
@@ -134,13 +112,40 @@ export default function LoginPage() {
         }
       }
 
-      // 3. Fallback ke akun demo (Rifki Admin, Arifin Staf, Dimas Pendaki)
-      const matchedUser = demoUsers.find(
-        (u) => u.email.toLowerCase() === email.toLowerCase()
-      );
-      if (matchedUser) {
-        switchUser(matchedUser.role);
-        notify(`Login berhasil! Selamat datang, ${matchedUser.name}`, "success");
+      // 3. Akun Admin / Owner Resmi
+      if (cleanEmail === "owner@triva.id" || cleanEmail === "admin@triva.id") {
+        const adminUser: User = {
+          id: "usr-admin-1",
+          name: "Rifki",
+          email: "owner@triva.id",
+          phoneWa: "083851284143",
+          role: "admin",
+          avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80",
+        };
+        setCurrentUser(adminUser);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("triva_current_user", JSON.stringify(adminUser));
+        }
+        notify("Login berhasil! Selamat datang, Rifki (Owner & Pengelola Toko)", "success");
+        router.push("/dashboard");
+        return;
+      }
+
+      // 4. Akun Pendaki Terdaftar Standar
+      if (cleanEmail === "dimas.hiker@gmail.com" || cleanEmail === "pendaki@triva.id") {
+        const custUser: User = {
+          id: "usr-cust-1",
+          name: "Dimas Anggara (Pendaki)",
+          email: "dimas.hiker@gmail.com",
+          phoneWa: "085712349988",
+          role: "customer",
+          avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80",
+        };
+        setCurrentUser(custUser);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("triva_current_user", JSON.stringify(custUser));
+        }
+        notify("Login berhasil! Selamat datang kembali, Dimas Anggara", "success");
         router.push("/dashboard");
         return;
       }
@@ -148,16 +153,7 @@ export default function LoginPage() {
       setErrorMessage("Email atau password yang Anda masukkan tidak sesuai. Silakan periksa kembali.");
     } catch (err: any) {
       console.error("Login exception:", err);
-      const matchedUser = demoUsers.find(
-        (u) => u.email.toLowerCase() === email.toLowerCase()
-      );
-      if (matchedUser) {
-        switchUser(matchedUser.role);
-        notify(`Login berhasil! Selamat datang, ${matchedUser.name}`, "success");
-        router.push("/dashboard");
-      } else {
-        setErrorMessage("Email atau password tidak cocok. Silakan coba kembali.");
-      }
+      setErrorMessage("Terjadi kendala saat login. Silakan coba kembali.");
     } finally {
       setLoading(false);
     }
@@ -206,7 +202,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="contoh: pendaki@triva.id"
+                  placeholder="contoh: owner@triva.id atau email pendaki"
                   className="w-full text-xs pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-triva-crimson transition-colors"
                   required
                 />
@@ -223,7 +219,7 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="&bull;&bull;&bull;&bull;&bull;&bull;"
+                  placeholder="••••••••"
                   className="w-full text-xs pl-9 pr-9 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-triva-crimson transition-colors"
                   required
                 />
@@ -253,82 +249,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Quick Demo Login Switcher Box */}
-          <div className="mt-6 pt-5 border-t border-slate-100">
-            <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2.5">
-              <Sparkles className="w-3.5 h-3.5 text-triva-amber" />
-              <span>Login Instan 1-Klik (Uji Coba Demo):</span>
-            </div>
-
-            <div className="grid grid-cols-1 gap-2">
-              {/* Admin Button */}
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("admin")}
-                className="w-full p-2.5 rounded-xl border border-triva-crimson-200 bg-triva-crimson-50/60 hover:bg-triva-crimson-100 flex items-center justify-between text-left transition-all active:scale-98"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-triva-crimson text-white flex items-center justify-center shrink-0">
-                    <Shield className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-triva-crimson">
-                      Rifki (Owner / Admin)
-                    </div>
-                    <div className="text-[10px] text-slate-500">owner@triva.id &bull; Laporan Omset</div>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-triva-crimson bg-white px-2 py-0.5 rounded-md border border-triva-crimson-200">
-                  Masuk &rarr;
-                </span>
-              </button>
-
-              {/* Staff Button */}
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("staff")}
-                className="w-full p-2.5 rounded-xl border border-amber-200 bg-amber-50/60 hover:bg-amber-100 flex items-center justify-between text-left transition-all active:scale-98"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0">
-                    <UserCheck className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-amber-900">
-                      Arifin (Staf Kasir)
-                    </div>
-                    <div className="text-[10px] text-slate-500">staff@triva.id &bull; Serah Terima & KTP</div>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-amber-800 bg-white px-2 py-0.5 rounded-md border border-amber-200">
-                  Masuk &rarr;
-                </span>
-              </button>
-
-              {/* Customer Button */}
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("customer")}
-                className="w-full p-2.5 rounded-xl border border-blue-200 bg-blue-50/60 hover:bg-blue-100 flex items-center justify-between text-left transition-all active:scale-98"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
-                    <Compass className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-blue-900">
-                      Dimas Anggara (Konsumen / Pendaki)
-                    </div>
-                    <div className="text-[10px] text-slate-500">dimas.hiker@gmail.com &bull; Sewa Mandiri</div>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-blue-800 bg-white px-2 py-0.5 rounded-md border border-blue-200">
-                  Masuk &rarr;
-                </span>
-              </button>
-            </div>
-          </div>
-
           {/* Link to Register */}
           <div className="mt-6 text-center text-xs text-slate-500">
             Belum punya akun penyewa?{" "}
@@ -336,7 +256,7 @@ export default function LoginPage() {
               href="/register"
               className="font-bold text-triva-crimson hover:underline"
             >
-              Daftar Sebagai Konsumen Baru
+              Daftar Sebagai Pendaki Baru
             </Link>
           </div>
         </div>
